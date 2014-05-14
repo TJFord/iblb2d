@@ -54,6 +54,7 @@ void Units::calculateLBPara()
     omega = 1./tau;
     nu = (tau - 0.5)/3.;
     dt = nu*dx*dx/vis;
+    //cout<<"Units:dt="<<dt<<endl;
     u_lb = u*dt/dx;
     Re = u_lb/nu;
     dm = rho*dx*dx*dx; 

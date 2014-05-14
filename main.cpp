@@ -17,12 +17,12 @@ int main(int argc, char *argv[])
 {
   //fstream in("input.txt",ios::in);
   string in="input.txt";
+  //string in="inputForce.txt";
   //string in="input_simpleSquare.txt";
   string out="rst.txt";
 
   LB a;
   a.readInput(in);
-  a.printInfor();
   /*Units para(0.1, 1.0, 1.0, 1e-6,1.0);
   para.calculateLBPara();
   double Re2 = para.getRe();
@@ -31,13 +31,16 @@ int main(int argc, char *argv[])
   int nSave = 100;
   a.init();
   
+  a.printInfor();// this one should come after init();
   clock_t begin = clock();
   for (int i=0;i<1200;i++)
+  //for (int i=0;i<2;i++)
   {
     //  cout<<"loop i="<<i<<endl;
     //a.applyBC();
     //a.stream();
     //a.collide();
+    //a.applyForce();
     a.collideSwap();
     a.streamSwap();
     a.applyBC();

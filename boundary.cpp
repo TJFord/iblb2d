@@ -164,8 +164,7 @@ void lowerZouHe(double* f, void* selfData) {
   }
 }
 
-void rightOpen (double* f, void* selfData)
-{
+void rightOpen (double* f, void* selfData){
   openData *data = (openData*)selfData;
   int id,st,size,next,tgt;
   size = data->size;
@@ -194,10 +193,50 @@ void rightOpen (double* f, void* selfData)
   f[st] = f[tgt*9];*/
 }
 
-void leftOpen(double *f, void* selfData){}
-void upperOpen(double *f, void* selfData){}
-void lowerOpen(double *f, void* selfData){}
+void leftOpen(double *f, void* selfData){
+  openData *data = (openData*)selfData;
+  int id,st,size,next,tgt;
+  size = data->size;
+  for (int i=0;i<size;i++){
+    id = data->node[i];
+    next = data->nodeNext[i];
+    st = id*9;
+    tgt = next*9;
+    f[st+1] = f[tgt+1];
+    f[st+5] = f[tgt+5];
+    f[st+8] = f[tgt+8];
+  }
+}
 
+void upperOpen(double *f, void* selfData){
+  openData *data = (openData*)selfData;
+  int id,st,size,next,tgt;
+  size = data->size;
+  for (int i=0;i<size;i++){
+    id = data->node[i];
+    next = data->nodeNext[i];
+    st = id*9;
+    tgt = next*9;
+    f[st+4] = f[tgt+4];
+    f[st+7] = f[tgt+7];
+    f[st+8] = f[tgt+8];
+  }
+}
+
+void lowerOpen(double *f, void* selfData){
+  openData *data = (openData*)selfData;
+  int id,st,size,next,tgt;
+  size = data->size;
+  for (int i=0;i<size;i++){
+    id = data->node[i];
+    next = data->nodeNext[i];
+    st = id*9;
+    tgt = next*9;
+    f[st+2] = f[tgt+2];
+    f[st+6] = f[tgt+6];
+    f[st+5] = f[tgt+5];
+  }
+}
 
 /*
 void velocityZouHe(double* f, int id, int *n, void* selfData)

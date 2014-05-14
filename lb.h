@@ -37,7 +37,13 @@ class LB
   static const double cs2; // square of sound speed
   static const int c[9][2]; //velocity vector
   static const double w[9];// weight factor
+  // reserved for regularized scheme
+  double Qxx[9], Qxy[9], Qyy[9];//Q tensor for regularized method
+  double feq[9], fNeq[9];
+  double neqPixx, neqPixy, neqPiyy;
 
+  //double F[9]; // force term for one lattice
+  
   int nbc;//number of boundary conditions
 
   Dynamics *pBC;
@@ -48,6 +54,9 @@ class LB
   velData *pVel; 
   bbData *pBB;
   openData *pOpen;
+public:
+  double *force;
+  
 public:
   //creator
   LB();
@@ -61,8 +70,13 @@ public:
   void streamSwap();
   void collideSwap();
   void applyBC();
+  void applyForce();
   //void applyForce(int id, double fx, double fy);
   void bgk(int id, void* selfData);
+  void regularized(int id, void* selfData);
+  void stokes(int id, void* selfData);
+  
+  double computeEqStokes(int idx, double rho,double ux, double uy);
   double computeEquilibrium(int idx, double rho,double ux, double uy,double uSqr);
   // accessor  
   void computeMacros(int id, double *rho, double * ux, double *uy);

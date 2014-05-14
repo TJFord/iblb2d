@@ -41,6 +41,7 @@ LB::LB(){
   pVel=NULL;
   pOpen=NULL;
   pBB=NULL;
+  force = NULL;
 }
 
 LB& LB::operator=(const LB& rhs){
@@ -53,6 +54,7 @@ LB& LB::operator=(const LB& rhs){
     delete [] pVel;
     delete [] pOpen;
     delete [] pBB;
+    delete [] force;
     delete pUnits;
 
     lx=rhs.lx; ly=rhs.ly; nf=rhs.nf;
@@ -81,7 +83,11 @@ LB& LB::operator=(const LB& rhs){
     for (int i=0;i<tmp;i++)
      coor[i]=rhs.coor[i];
     
-    pBC = new Dynamics[nbc];
+    force = new double[nf*d];
+    tmp = nf*d;
+    for (int i=0;i<tmp;i++)
+     force[i]=rhs.force[i];
+    
     /*
     for (int i=0;i<nbc;i++){
       pBC[i].dynf=rhs.pBC[i].dynf;
@@ -100,8 +106,41 @@ LB& LB::operator=(const LB& rhs){
       }
     }
     pOpen = new openData[no];
+    for(int i=0;i<no;i++){
+      pOpen[i].size=rhs.pOpen[i].size;
+      pOpen[i].norm[0]=rhs.pOpen[i].norm[0];
+      pOpen[i].norm[1]=rhs.pOpen[i].norm[1];
+      for(int j=0;j<pOpen[i].size;j++){
+        pOpen[i].node[j]=rhs.pOpen[i].node[j];
+        pOpen[i].nodeNext[j]=rhs.pOpen[i].nodeNext[j];
+      }
+    }
     pBB = new bbData[nb];
+    for(int i=0;i<nb;i++){
+      pBB[i].size=rhs.pBB[i].size;
+      for(int j=0;j<pBB[i].size;j++){
+        pBB[i].node[j]=rhs.pBB[i].node[j];
+      }
+    }
+    pBC = new Dynamics[nbc];
+    tmp=0;
+    for (int i=0;i<nv;i++){
+      pBC[tmp].selfData = (void*)&pVel[i];
+      pBC[tmp].dynf = rhs.pBC[tmp].dynf;
+      tmp++;
+    } 
+    for (int i=0;i<no;i++){
+      pBC[tmp].selfData = (void*)&pOpen[i];
+      pBC[tmp].dynf = rhs.pBC[tmp].dynf;
+      tmp++;
+    } 
+    for (int i=0;i<nb;i++){
+      pBC[tmp].selfData = (void*)&pBB[i];
+      pBC[tmp].dynf = rhs.pBC[tmp].dynf;
+      tmp++;
+    } 
     pUnits = new Units;
+    *pUnits = *(rhs.pUnits);
   }  
 }
 
@@ -137,6 +176,7 @@ void LB::readInput(const std::string filename)
         else if (str.compare("nbList") == 0){
           nbList = new int[nf*(q-1)];
           coor = new int[nf*d];
+          force = new double[nf*d];
           int nadj = q - 1;
           for (int i = 0; i < nf; i++){
             in >> tmp;//current node number
@@ -260,6 +300,7 @@ LB::~LB(){
   delete [] pOpen;
   delete [] pBB;
   delete [] pBC;
+  delete [] force;
   delete pUnits;
 
   cout<<"Destroy LB"<<endl;
@@ -267,6 +308,7 @@ LB::~LB(){
 
 void LB::printInfor(){
   cout<<"********************************"<<endl;
+  //cout.precision(5);
   cout<<"IBLB program"<<endl;
   cout<<"fluid:"<<endl;
   cout<<"length L = "<<lx*pUnits->dx<<" m, width W = "<<ly*pUnits->dx<<" m"<<endl;
@@ -278,15 +320,27 @@ void LB::printInfor(){
   cout<<"u_lb = "<<pUnits->u_lb<<endl;
   cout<<"dx = "<<pUnits->dx<<" m"<<endl;
   cout<<"dt = "<<pUnits->dt<<" s"<<endl;
+  if (pUnits->dt == 0.0) cout<<"oh shit"<<endl;
   cout<<"********************************"<<endl;
 }
   
 void LB::init(){
-  //printInfor();
   pUnits->calculateLBPara();
   omega = pUnits->omega;
+  // initialize tensor Qxx, Qxy, Qyy;
+  for (int i=0;i<q;i++){
+    Qxx[i]=c[i][0]*c[i][0]-cs2;
+    Qxy[i]=c[i][0]*c[i][1];
+    Qyy[i]=c[i][1]*c[i][1]-cs2;
+  }
   int st = 0;
   for (int i = 0; i < nf; i++){
+    for (int j=0;j<d;j++){
+      force[i*d+j]=0.0;
+    }
+    //force[i*d] = 1.e-6;
+    //force[i*d+1] =0.0;
+    //cout<<"force"<<"i="<<i<<" "<<force[i*d]<<" "<<force[i*d+1]<<endl;
     st = i*q;
     for (int j=0; j<q; j++){
       f[st+j] = computeEquilibrium(j, 1.0, 0.0, 0.0, 0.0); //initialize with zero velocity          
@@ -296,21 +350,24 @@ void LB::init(){
   for (int j=0;j<q;j++)
     f[st+j]=0.0; //extra node, doesn't matter
 
-  collisionFun=&LB::bgk;//fluid scheme
+  //collisionFun=&LB::bgk;//fluid scheme
+  //collisionFun=&LB::regularized;//fluid scheme
+  collisionFun=&LB::stokes;//fluid scheme
   
-  velData *data =(velData*) pBC[0].selfData;
-  for (int i=0;i<data->size;i++)
-    cout<<"ux"<<data->ux[i]<<endl;
+  if( nv !=0 ){
+    velData *data =(velData*) pBC[0].selfData;
+    for (int i=0;i<data->size;i++)
+      cout<<"ux"<<data->ux[i]<<endl;
 
-  cout<<"after"<<endl;
-  double velscale = pUnits->dx/pUnits->dt;
-  for (int i=0;i<pVel[0].size;i++)
+    cout<<"after"<<endl;
+    double velscale = pUnits->dx/pUnits->dt;
+    for (int i=0;i<pVel[0].size;i++)
     pVel[0].ux[i] /= velscale;
 
-  velData *data1 =(velData*) pBC[0].selfData;
-  for (int i=0;i<data1->size;i++)
-    cout<<"ux"<<data1->ux[i]<<endl;
-
+    velData *data1 =(velData*) pBC[0].selfData;
+    for (int i=0;i<data1->size;i++)
+      cout<<"ux"<<data1->ux[i]<<endl;
+  }
 
   
 }
@@ -331,9 +388,14 @@ double LB::computeEquilibrium(int idx, double rho,double ux, double uy,double uS
   return rho*w[idx]*(1. + 3.*c_u + 4.5*c_u*c_u - 1.5*uSqr);
 }
 
+double LB::computeEqStokes(int idx, double rho,double ux, double uy){
+  double c_u = c[idx][0]*ux + c[idx][1]*uy;
+  return rho*w[idx]*(1. + 3.*c_u );
+}
+
 void LB::bgk(int id, void* selfData){
   //cout<<"bgk"<<endl;
-  double omega = *((double *)selfData);
+  //double omega = *((double *)selfData);
   double rho, ux, uy;
   computeMacros(id,&rho, &ux, &uy);
   double uSqr = ux*ux + uy*uy;
@@ -344,6 +406,63 @@ void LB::bgk(int id, void* selfData){
   }
 }
 
+void LB::regularized(int id, void* selfData){
+  double omega = *((double *)selfData);
+  double rho, ux, uy;
+  //double feq[9], fNeq[9],Qxx[9],Qxy[9],Qyy[9];
+  //double neqPixx(0.0), neqPixy(0.0), neqPiyy(0.0);
+  neqPixx =0.0;
+  neqPixy =0.0;
+  neqPiyy =0.0;
+  computeMacros(id,&rho, &ux, &uy);
+  double uSqr = ux*ux + uy*uy;
+  int st = id*9;
+  for (int i=0;i<9;i++){
+    feq[i]=computeEquilibrium(i,rho, ux, uy, uSqr);
+    fNeq[i]=f[st+i]-feq[i];
+    neqPixx += Qxx[i]*fNeq[i];
+    neqPixy += Qxy[i]*fNeq[i];
+    neqPiyy += Qyy[i]*fNeq[i];
+  }
+  for (int i=0;i<9;i++){
+    f[st+i] = feq[i]+(1-omega)*4.5*w[i]*(Qxx[i]*neqPixx + 2*Qxy[i]*neqPixy + Qyy[i]*neqPiyy);
+  }
+}
+
+void LB::stokes(int id, void* selfData){
+  double rho, ux, uy;
+  computeMacros(id,&rho, &ux, &uy);
+  int st = id*q;
+  for (int i=0;i<q;i++){
+    f[st+i] *= (1-omega);
+    f[st+i] += omega*computeEqStokes(i,rho, ux, uy);
+  }
+}
+//void LB::applyForce(int id, double fx, double fy){
+void LB::applyForce(){
+  double F[9];
+  double rho, ux, uy;
+  double fx,fy;
+  int st=0;
+  int id;
+  for (id=0;id<nf;id++){
+    st = id*9;
+    fx = force[id*d];
+    fy = force[id*d+1];
+    computeMacros(id,&rho, &ux, &uy);
+    F[0]=(1.-0.5*omega)*w[0]*(3.*((  -ux)*fx +(  -uy)*fy));
+    F[1]=(1.-0.5*omega)*w[1]*(3.*(( 1.-ux)*fx +(  -uy)*fy)+9.*(ux*fx));
+    F[2]=(1.-0.5*omega)*w[2]*(3.*((  -ux)*fx +( 1.-uy)*fy)+9.*(uy*fy));
+    F[3]=(1.-0.5*omega)*w[3]*(3.*((-1.-ux)*fx +(  -uy)*fy)+9.*(ux*fx));
+    F[4]=(1.-0.5*omega)*w[4]*(3.*((  -ux)*fx +(-1.-uy)*fy)+9.*(uy*fy));
+    F[5]=(1.-0.5*omega)*w[5]*(3.*(( 1.-ux)*fx +( 1.-uy)*fy)+9.*((ux+uy)*(fx+fy)));
+    F[6]=(1.-0.5*omega)*w[6]*(3.*((-1.-ux)*fx +( 1.-uy)*fy)+9.*((ux-uy)*(fx-fy)));
+    F[7]=(1.-0.5*omega)*w[7]*(3.*((-1.-ux)*fx +(-1.-uy)*fy)+9.*((ux+uy)*(fx+fy)));
+    F[8]=(1.-0.5*omega)*w[8]*(3.*(( 1.-ux)*fx +(-1.-uy)*fy)+9.*((ux-uy)*(fx-fy)));
+    for (int i=0;i<9;i++)
+      f[st+i] += F[i];
+  }
+}
 /*swap algorithm, takes time*/
 void LB::stream()
 {/*
@@ -446,15 +565,6 @@ void LB::applyBC(){
   for (int i=0;i<nbc;i++){
     pBC[i].dynf(f,pBC[i].selfData);
   }
-  /*
-  for (int i=0;i<ninlet;i++)
-  {
-    pDyn[inList[i]].dynf(f,inList[i],pDyn[inList[i]].selfData);
-  }
-  for (int i=0;i<nbb;i++)
-  {
-    pDyn[bbList[i]].dynf(f,bbList[i],pDyn[bbList[i]].selfData);
-  }*/
 }
 
 void LB::output(const std::string filename)

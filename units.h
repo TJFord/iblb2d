@@ -21,6 +21,22 @@ struct Units
 public:
   Units();
   Units(const double dx_, const double tau_, const double rho_, const double vis_, const double u_);
+  Units& operator=(Units& rhs){
+    if (this != &rhs){
+      dx = rhs.dx;
+      dt = rhs.dt;
+      dm = rhs.dm;
+      rho = rhs.rho;
+      vis = rhs.vis;
+      u = rhs.u;
+      omega = rhs.omega;
+      tau = rhs.tau;
+      nu = rhs.nu;
+      Re = rhs.Re;
+      u_lb = rhs.u_lb;
+    }
+    return *this;
+  } 
   void setParameters(const std::string filename);
   void calculateLBPara();
   inline const double getdX(){return dx;}
