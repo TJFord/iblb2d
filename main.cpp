@@ -6,49 +6,114 @@
 #include <fstream>
 #include <string>
 #include <ctime>
+//#include <climits>
 
 using namespace std;
 
 #include "lb.h"
 #include "boundary.h"
 #include "units.h"
+#include "cell.h"
+#include "ibm.h"
 
 int main(int argc, char *argv[])
 {
   //fstream in("input.txt",ios::in);
-  string in="input.txt";
+  //string in="input.txt";
+  //string out="rst.txt";
+  //string cin="cellInput.txt";
+  //string cin="circle.txt";
+  string cin="sphere.txt";
+  //string cin="chain.txt";
   //string in="inputForce.txt";
-  //string in="input_simpleSquare.txt";
-  string out="rst.txt";
+  //string fin="inputChannel.txt";
+  //string fin="shear.txt";
+  string fin="channel.txt";
+  //string fin="Velchannel.txt";
+  //string fin="vonkarman.txt";
+  string fgeom="fgeom.txt";
+  string cellout="cellRst.txt";
+  string cellRef="cellRef.txt";
+  string cellForce="cellForce.txt";
+  string fluidout="fluidRst.txt";
+  string fluidForce="fluidForce.txt";
 
-  LB a;
-  a.readInput(in);
-  /*Units para(0.1, 1.0, 1.0, 1e-6,1.0);
-  para.calculateLBPara();
-  double Re2 = para.getRe();
-  */
- // cout<<"Re2"<<Re2<<endl;
-  int nSave = 100;
-  a.init();
+  LB channel;
+  channel.readInput(fin);
+  channel.init();
+  channel.printInfor();
+  channel.writeGeometry(fgeom);
   
-  a.printInfor();// this one should come after init();
-  clock_t begin = clock();
+  Cell rbc;
+  rbc.readInput(cin);
+  rbc.init();
+  rbc.nondimension(*channel.pUnits);
+  //rbc.output(out);
+
+  
+  IBM cellInChanl(&channel,&rbc);
+  
+  int nSave =100000;//2000;
+  int nts =5000000;
+
+  //cellInChanl.moveSolidTo(395,50);
+  //a.init();
+  //a.printInfor();// this one should come after init();
+  //a.output(out);
+  
+  //clock_t begin = clock();
+  /*
   for (int i=0;i<1200;i++)
-  //for (int i=0;i<2;i++)
   {
-    //  cout<<"loop i="<<i<<endl;
+    //channel.computeVelocity();
+    
+    //a.collideSwap();
+    //a.streamSwap();
     //a.applyBC();
-    //a.stream();
-    //a.collide();
-    //a.applyForce();
-    a.collideSwap();
-    a.streamSwap();
-    a.applyBC();
-    if (i%nSave ==0 )
-      a.output(out);
+    //if (i%nSave ==0 )
+    //  a.output(out);
+
+    //channel.collideSwap();
+    //channel.streamSwap();
+    
+    channel.collide();
+    channel.stream();
+    channel.applyBC();
+
+  }*/
+  clock_t begin = clock();
+  //cellInChanl.output(cellout); 
+  
+  for (int i=0;i<nts;i++){
+    channel.computeVelocity();
+    cellInChanl.interpret();
+    rbc.updateHalf();
+    //rbc.computeForce();
+    rbc.computeReference();
+    rbc.computeRigidForce();
+
+    cellInChanl.spread();
+
+    channel.applyForce();
+    channel.collide();
+    channel.stream();
+    channel.applyBC();
+    rbc.update();
+    
+    cellInChanl.periodic();
+
+    if (i%nSave ==0 ){
+      channel.writeVelocity(fluidout);
+      channel.writeForce(fluidForce);
+      rbc.writeGeometry(cellout);
+      rbc.writeForce(cellForce);
+      rbc.writeReferenceGeometry(cellRef);
+      cout<<"time step "<<i<<" finished"<<endl;
+    }
   }
   clock_t end = clock();
   double elapsedSecs = double(end-begin)/CLOCKS_PER_SEC;
   cout<<"time elapsed "<<elapsedSecs<<endl;
+
   return 0;
 }

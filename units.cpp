@@ -48,8 +48,8 @@ void Units::setParameters(const std::string filename){
     cout<<"cannot open Units input file"<<endl;
   }
 }
-void Units::calculateLBPara()
-{
+
+void Units::calculateLBPara(){
   if (tau !=0.){
     omega = 1./tau;
     nu = (tau - 0.5)/3.;
@@ -68,3 +68,14 @@ void Units::calculateLBPara()
   }
   //cout<<"Re"<<dx*u/vis<<endl;
 }
+/*
+void Units::setStokesLBPara(double u_lb_){
+  u_lb = u_lb_;
+  tau = 1.;
+  omega = 1./tau;
+  dt = u_lb/u*dx;
+  Re = 0.;
+  vis = -1;//-1 means infinity
+  nu = -1;//-1 means infinity
+}
+*/

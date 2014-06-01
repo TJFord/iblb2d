@@ -19,6 +19,7 @@ struct Units
   double u_lb;
 
 public:
+  //creators
   Units();
   Units(const double dx_, const double tau_, const double rho_, const double vis_, const double u_);
   Units& operator=(Units& rhs){
@@ -37,8 +38,11 @@ public:
     }
     return *this;
   } 
+  //manipulators
   void setParameters(const std::string filename);
   void calculateLBPara();
+  //void setStokesLBPara(double u_lb);
+  //accessors
   inline const double getdX(){return dx;}
   inline const double getdM(){return dm;}
   inline const double getdT(){return dt;}

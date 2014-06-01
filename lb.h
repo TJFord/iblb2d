@@ -22,12 +22,17 @@ typedef struct{
 
 class LB
 {
+public:
   int lx,ly;//bounding box
   int *IJidx;//semi direct address index
   int *nbList;//neighbor list
   int nf; // total fluid nodes
+  int nt; // all nodes including buffer
   double *f;//density distribution
+  double *ft;//copy of f
   int *coor;
+  double *v;//velocity
+  std::string collisionScheme;
 
   Units *pUnits;
 
@@ -80,7 +85,10 @@ public:
   double computeEquilibrium(int idx, double rho,double ux, double uy,double uSqr);
   // accessor  
   void computeMacros(int id, double *rho, double * ux, double *uy);
-  void output(const std::string out);
+  void computeVelocity();
+  void writeVelocity(const std::string out);
+  void writeGeometry(const std::string out);
+  void writeForce(const std::string out);
   void printInfor();
 };
 
