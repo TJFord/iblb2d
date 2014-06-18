@@ -92,6 +92,7 @@ int main(int argc, char *argv[])
     if (i%nSave ==0 ){
       channel.writeVelocity(fluidout);
       //rbc.output(cellout);
+      cout<<"time step "<<i<<" finsished"<<endl;
     }
   }
   clock_t end = clock();

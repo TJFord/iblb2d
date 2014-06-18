@@ -16,12 +16,15 @@ Cell::Cell(){
   pBond=NULL;
   pAngle=NULL;
   
+  angRef=NULL;
+
   rho=0.;
   m=0.;
   ks=0.;
   kb=0.;
   kp=0.;
   g=9.8;
+  A0=0.;
 }
 
 Cell& Cell::operator=(const Cell& rhs){
@@ -34,11 +37,15 @@ Cell& Cell::operator=(const Cell& rhs){
     delete [] force;
     delete pBond;
     delete pAngle;
-   
+    
+    delete [] angRef;
+
     nn=rhs.nn; nb=rhs.nb; na=rhs.na;
     rho=rhs.rho; m=rhs.m;
     ks=rhs.ks; kb=rhs.kb;
     kp=rhs.kp;
+    g=rhs.g;
+    A0=rhs.A0;
 
     x=new double[nn*2];
     xtmp=new double[nn*2];
@@ -46,6 +53,7 @@ Cell& Cell::operator=(const Cell& rhs){
     xR=new double[nn*2];
     v=new double[nn*2];
     force=new double[nn*2];
+    angRef = new double[nn];
     for (int i=0;i<nn;i++){
       x[2*i]=rhs.x[2*i];
       x[2*i+1]=rhs.x[2*i+1];
@@ -59,6 +67,7 @@ Cell& Cell::operator=(const Cell& rhs){
       v[2*i+1]=rhs.v[2*i+1];
       force[2*i]=rhs.force[2*i];
       force[2*i+1]=rhs.force[2*i+1];
+      angRef[i]=rhs.angRef[i];
     }
     int size;
     pBond = new Bond;
@@ -106,6 +115,7 @@ void Cell::readInput(const std::string filename){
         xR=new double[nn*2];
         v=new double[nn*2];
         force=new double[nn*2];
+        angRef=new double[nn];
 
         for (int i=0;i<nn;i++)
           in>>x[2*i]>>x[2*i+1];
@@ -141,6 +151,7 @@ Cell::~Cell(){
   delete [] x0;
   delete [] xR;
   delete [] force;
+  delete [] angRef;
   delete pBond;
   delete pAngle;
 }
@@ -158,12 +169,25 @@ void Cell::init(){
     xc0[1] += x[2*i+1];
     //std::cout<<"xhalf "<<xhalf[2*i]<<" "<<xhalf[2*i+1]<<std::endl;
   }
+  A0=computeArea();
+  //x[0] *= 1.5;
+  //x[4] -=0.5;
+  //x[1] -= 0.5;
+  //x[2*4] *= 1.02;
   xc0[0]/=nn;
   xc0[1]/=nn;
   dx = x[0]-xc0[0];
   dy = x[1]-xc0[1];
   radius = sqrt(dx*dx+dy*dy);
-  angRef = acos(dx/radius);
+  angRef[0] = acos(dx/radius);
+  for(int i=1;i<nn;i++){
+    dx=x[2*i]-xc0[0];
+    dy=x[2*i+1]-xc0[1];
+    angRef[i]=acos(dx/radius);
+    //if (i<20)
+    //  x[2*i+1] += 1;
+  }
+  //computeEquilibrium();
 }
 
 void Cell::update(){
@@ -181,20 +205,64 @@ void Cell::updateHalf(){
     xtmp[2*i+1]=x[2*i+1];
     x[2*i] += 0.5*v[2*i];
     x[2*i+1] += 0.5*v[2*i+1];
-    //x[2*i] += 100*v[2*i];
-    //x[2*i+1] += 100*v[2*i+1];
   }
 }
 
 void Cell::nondimension(const Units& unt){
+  // ks: energy Es = 0.5*ks*dr^2
   ks *= unt.dt*unt.dt/unt.dm;
+  // kb: energy units, Eb = 0.5*kb*dtheta^2
   kb *= unt.dt*unt.dt/unt.dm/unt.dx/unt.dx;
-  kp *= unt.dt*unt.dt/unt.dm/unt.dx;
+  // kp: energy Ep = 0.5*kp*dA^2,for 2d, this 
+  // is not derived rigorously based on derivative
+  // thus, the force is simplified as F= kp*dA;
+  kp *= unt.dt*unt.dt*unt.dx/unt.dm;
   m /= unt.dm;
   g *= unt.dt*unt.dt/unt.dx;
+  std::cout<<"ks, kb, kp "<<ks<<" "<<kb<<" "<<kp<<std::endl;
+}
+
+void Cell::computeEquilibrium(){
+  double dx,dy,rsq;
+    int i1,i2,i3;
+    for (int i=0;i<nb;i++){
+      i1=pBond->first[i];
+      i2=pBond->next[i];
+      dx=x[2*i1]-x[2*i2];
+      dy=x[2*i1+1]-x[2*i2+1];
+      rsq = dx*dx+dy*dy;
+      pBond->L0[i]=sqrt(rsq);
+    }
+    double dx1, dy1, dx2,dy2, rsq1, rsq2, r1,r2;
+    double c, s;//cosine, sine
+    for (int i=0;i<na;i++){
+      i1 = pAngle->left[i];
+      i2 = pAngle->middle[i];
+      i3 = pAngle->right[i];
+      dx1 = x[2*i1]-x[2*i2];
+      dy1 = x[2*i1+1]-x[2*i2+1];
+      dx2 = x[2*i3]-x[2*i2];
+      dy2 = x[2*i3+1]-x[2*i2+1];
+      rsq1 = dx1*dx1+dy1*dy1;
+      rsq2 = dx2*dx2+dy2*dy2;
+      r1 = sqrt(rsq1);
+      r2 = sqrt(rsq2);
+      c = dx1*dx2 + dy1*dy2;
+      c /= r1*r2;
+
+      if (c>1.0) c=1.0;
+      if (c<-1.0) c=-1.0;
+      s = sqrt(1.0 - c*c);
+      if (s<0.001) s=0.001;
+      s = 1.0/s;
+      pAngle->ang0[i]=acos(c);
+    }
+     
+     
 }
 
 void Cell::bondHarmonicForce(){
+  //--calculate bond force with F = ks*(r-r0)---//
   double dx,dy,rsq,r,fv,dr;
   int i1,i2;
   for (int i=0;i<nb;i++){
@@ -210,6 +278,7 @@ void Cell::bondHarmonicForce(){
     }*/
     //std::cout<<"rsq"<<rsq<<" i1 "<<i1<<" "<<i2<<std::endl;
     r=sqrt(rsq);
+    //std::cout<<"i "<<i<<" r "<<r<<" L0 "<<pBond->L0[i]<<std::endl;
     dr = r-(pBond->L0[i]);
     
     if (r>0.0)
@@ -221,10 +290,15 @@ void Cell::bondHarmonicForce(){
     force[2*i1+1] += fv*dy;
     force[2*i2] -= fv*dx;
     force[2*i2+1] -= fv*dy;
+    /*force[2*i1] -= fv*dx;
+    force[2*i1+1] -= fv*dy;
+    force[2*i2] += fv*dx;
+    force[2*i2+1] += fv*dy;*/
   }
 }
 
 void Cell::angleBendForce(){
+  //--angle bending force Energy = 0.5*kb(dtheta)^2*--//
   int i1, i2, i3;
   double dx1, dy1, dx2,dy2, rsq1, rsq2, r1,r2;
   double c, s;//cosine, sine
@@ -247,6 +321,7 @@ void Cell::angleBendForce(){
     if (c>1.0) c=1.0;
     if (c<-1.0) c=-1.0;
     s = sqrt(1.0 - c*c);
+    //if (s<0.0001) s=0.0001;
     if (s<0.001) s=0.001;
     s = 1.0/s;
     
@@ -259,7 +334,9 @@ void Cell::angleBendForce(){
     f1y = a11*dy1 + a12*dy2;
     f3x = a22*dx2 + a12*dx1;
     f3y = a22*dy2 + a12*dy1;
-    
+    //if (i==0){
+    //  std::cout<<"f1,f3 "<<f1x<<" "<<f1y<<" "<<f3x<<" "<<f3y<<std::endl; 
+    //}
     force[2*i1] += f1x;
     force[2*i1+1] += f1y;
     force[2*i2] -= f1x+f3x;
@@ -270,6 +347,45 @@ void Cell::angleBendForce(){
   }
 }
 
+double Cell::computeArea(){
+  double dx,dy,area;
+  int i1,i2;
+  area=0.;
+  for (int i=0;i<nb;i++){
+    i1=pBond->first[i];
+    i2=pBond->next[i];
+    dx=x[2*i1]-x[2*i2];
+    dy=x[2*i1+1]-x[2*i2+1];
+    area += x[2*i1]*dy - x[2*i1+1]*dx;
+  }
+  return 0.5*sqrt(area*area);  
+}
+
+void Cell::areaConservationForce(){
+  //--area conservative force F=kp*(area - area0)--//
+  double dx,dy,area,fv;
+  //double r, rsq;
+  double nx,ny;//normal vector
+  int i1,i2;
+  area=computeArea();
+  //std::cout<<"A0 "<<A0<<" "<<area<<std::endl;
+  for (int i=0;i<nb;i++){
+    i1=pBond->first[i];
+    i2=pBond->next[i];
+    dx=x[2*i1]-x[2*i2];
+    dy=x[2*i1+1]-x[2*i2+1];
+   
+    //rsq = dx*dx+dy*dy;
+    //r = sqrt(rsq);
+    nx = -dy;
+    ny = dx;
+
+    fv = -kp*(area-A0);
+    force[2*i1] += fv*nx;
+    force[2*i1+1] += fv*ny;
+  }
+}
+
 void Cell::computeForce(){
   for (int i=0;i<nn;i++){
     force[2*i]=0.;
@@ -277,8 +393,10 @@ void Cell::computeForce(){
   }
   bondHarmonicForce();
   angleBendForce();
+  areaConservationForce();
+  //std::cout<<"ks"<<ks<<std::endl;
   //for (int i=0;i<nn;i++)
-  //  force[2*i] += g;
+  //  std::cout<<i<<" force "<<force[2*i]<<" "<<force[2*i+1]<<std::endl; 
 }
 
 void Cell::velocityVerletIntegration(){
@@ -295,6 +413,9 @@ void Cell::velocityVerletIntegration(){
     v[2*i+1] += 0.5*force[2*i+1]/m;
   }
 }
+/*
+void Cell::output(const std::string filename){
+  using namespace std;*/ 
 /*
 void Cell::output(const std::string filename){
   using namespace std; 
@@ -331,6 +452,12 @@ void Cell::computeReference(){
   double dx,dy;
   double angle,dtheta;
   double c,s;
+  int half;
+  if (nn%2)
+    half = (nn+1)/2;
+  else
+    half = nn/2;
+
   xc[0]=0.;
   xc[1]=0.;
   for(int i=0;i<nn;i++){
@@ -339,6 +466,7 @@ void Cell::computeReference(){
   }
   xc[0] /= nn;
   xc[1] /= nn;
+  dtheta=0.;
   //std::cout<<"center "<<center[0]<<" "<<center[1]<<std::endl;
   //std::cout<<"xc "<<xc[0]<<" "<<xc[1]<<std::endl;
   dx = x[0]-xc[0];
@@ -348,7 +476,17 @@ void Cell::computeReference(){
   else if (dx < -radius)
     dx = -radius;
   angle = acos(dx/radius);
-  dtheta = angle - angRef;
+  dtheta += angle - angRef[0];
+  for (int i=1;i<half;i++){
+    dx=x[2*i]-xc[0];
+    if (dx > radius)
+      dx = radius;
+    else if (dx < -radius)
+      dx = -radius;
+    angle = acos(dx/radius);
+    dtheta += angle - angRef[i];
+  }
+  dtheta /= half;
  // std::cout<<"dx "<<dx<<" "<<dy<<" "<<angle<<std::endl;
   c = cos(dtheta);
   s = sin(dtheta);
@@ -407,9 +545,21 @@ void Cell::writeReferenceGeometry(const std::string filename){
 void Cell::writeForce(const std::string filename){
   using namespace std; 
   ofstream out(filename.c_str(),ios::out | ios::app);
-      if (out.is_open()){
-        for (int i=0;i<nn;i++)
-          out<<setw(10)<<force[2*i]<<" "<<setw(10)<<force[2*i+1]<<endl; 
+    if (out.is_open()){
+      for (int i=0;i<nn;i++)
+        out<<setw(10)<<force[2*i]<<" "<<setw(10)<<force[2*i+1]<<endl; 
+      }else{
+        cout<<"cannot open output file"<<endl;
+      }
+   
+}
+
+void Cell::writeVelocity(const std::string filename){
+  using namespace std; 
+  ofstream out(filename.c_str(),ios::out | ios::app);
+    if (out.is_open()){
+      for (int i=0;i<nn;i++)
+        out<<setw(10)<<v[2*i]<<" "<<setw(10)<<v[2*i+1]<<endl; 
       }else{
         cout<<"cannot open output file"<<endl;
       }

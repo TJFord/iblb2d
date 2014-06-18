@@ -20,16 +20,19 @@ IBM::~IBM(){
 }
 
 void IBM::ph1(double r){
+  //less computation time compared to phCos
+  //thus it is recommended here.
+  //the form is exact with Timm's dissertation
   double q;
   q = sqrt(1.+4.*r*(1.-r));
   w1[0]=(3.-2.*r-q)/8;
   w1[1]=(3.-2.*r+q)/8;
   w1[2]=(1.+2.*r+q)/8;
   w1[3]=(1.+2.*r-q)/8;
-  /*w1[0]=phCos(r-1);
+  /*w1[0]=phCos(1+r);
   w1[1]=phCos(r);
-  w1[2]=phCos(r+1);
-  w1[3]=phCos(r+2);*/
+  w1[2]=phCos(1-r);
+  w1[3]=phCos(2-r);*/
 }
 
 void IBM::ph2(double r){
@@ -39,10 +42,10 @@ void IBM::ph2(double r){
   w2[1]=(3.-2.*r+q)/8;
   w2[2]=(1.+2.*r+q)/8;
   w2[3]=(1.+2.*r-q)/8;
-  /*w2[0]=phCos(r-1);
+  /*w2[0]=phCos(1+r);
   w2[1]=phCos(r);
-  w2[2]=phCos(r+1);
-  w2[3]=phCos(r+2);*/
+  w2[2]=phCos(1-r);
+  w2[3]=phCos(2-r);*/
 }
 
 double IBM::phCos(double r){
@@ -124,6 +127,8 @@ void IBM::interpret(){
     int nfID,lx,ly;
     double s1,s2,r1,r2;
     int i1,i2;
+    //double w;
+
     lx = plb->lx;
     ly = plb->ly;
     for(int j=0;j<nn;j++){
@@ -131,6 +136,7 @@ void IBM::interpret(){
       pCell->v[2*j+1] =0.;
     }
     for (int j=0;j<nn;j++){
+      //w=0.;
       s1 = pCell->x[2*j];
       s2 = pCell->x[2*j+1];
       i1 =(int)floor(s1);
@@ -139,15 +145,34 @@ void IBM::interpret(){
       r2 = s2-i2;
       ph1(r1);
       ph2(r2);
-      for (int k=0;k<4;k++){
-        for (int m=0;m<4;m++){
-          //nfID = plb->IJidx[(i2-1+k)*lx+i1-1+m];
-          nfID = plb->IJidx[(i2-2+k)*lx+i1-2+m];
+      /*if (j==7){
+        std::cout<<"interpret"<<std::endl;
+        std::cout<<"node i= "<<j<<std::endl;
+        std::cout<<"x,y "<<s1<<" "<<s2<<" i1,i2 "<<i1<<" "<<i2<<std::endl;
+        std::cout<<"x in ["<<i1-1<<" "<<i1+2<<"]"<<std::endl;
+        std::cout<<"y in ["<<i2-1<<" "<<i2+2<<"]"<<std::endl;
+      }*/
+      for (int iy=0;iy<4;iy++){
+        //std::cout<<"y "<<i2-2+k<<" ";
+        for (int ix=0;ix<4;ix++){
+          nfID = plb->IJidx[(i2-1+iy)*lx+i1-1+ix];
+          //nfID = plb->IJidx[(i2-2+iy)*lx+i1-2+ix];
+         // nfID = plb->IJidx[(i2+iy)*lx+i1+ix];
+          if (nfID > plb->nf) 
+            std::cout<<"nfID "<<nfID<<" nt"<<plb->nt<<std::endl;
           //plb->computeMacros(nfID,&rho, &ux,&uy);
-          pCell->v[2*j] += w1[k]*w2[m]*plb->v[2*nfID];
-          pCell->v[2*j+1] += w1[k]*w2[m]*plb->v[2*nfID+1];
+          pCell->v[2*j] += w1[ix]*w2[iy]*plb->v[2*nfID];
+          pCell->v[2*j+1] += w1[ix]*w2[iy]*plb->v[2*nfID+1];
+          /*if (j==7){
+            std::cout<<"w1 "<<w1[ix]<<" w2 "<<w2[iy]<<std::endl;
+            std::cout<<"ux "<<pCell->v[2*j]<<" fluid at nfID "<<nfID<<" ux "<<plb->v[2*nfID]<<std::endl;
+            std::cout<<"x,y for nfID "<<plb->coor[2*nfID]<<" "<<plb->coor[2*nfID+1]<<std::endl;
+          }*/
+          //w += w1[k]*w2[m];
         }
       }
+      //std::cout<<"total weight "<<w<<std::endl;
+      //std::cout<<"vel "<<pCell->v[2*j]<<" "<<pCell->v[2*j+1]<<std::endl;
     } 
   }
 
@@ -207,18 +232,31 @@ void IBM::spread(){
      // std::cout<<"x "<<s1<<" i1"<<i1<<" left"<<i1-1<<" rgt"<<i1+2<<std::endl;
       ph1(r1);
       ph2(r2);
-      for (int k=0;k<4;k++){
-        for (int m=0;m<4;m++){
-          //nfID = plb->IJidx[(i2-1+k)*lx+i1-1+m];
-          nfID = plb->IJidx[(i2-2+k)*lx+i1-2+m];
+     /*if (j==7){
+        std::cout<<"spread"<<std::endl;
+        std::cout<<"node i= "<<j<<std::endl;
+        std::cout<<"x,y "<<s1<<" "<<s2<<" i1,i2 "<<i1<<" "<<i2<<std::endl;
+        std::cout<<"x in ["<<i1-1<<" "<<i1+2<<"]"<<std::endl;
+        std::cout<<"y in ["<<i2-1<<" "<<i2+2<<"]"<<std::endl;
+      }*/
+      for (int iy=0;iy<4;iy++){
+        for (int ix=0;ix<4;ix++){
+          nfID = plb->IJidx[(i2-1+iy)*lx+i1-1+ix];
+          //nfID = plb->IJidx[(i2-2+iy)*lx+i1-2+ix];
+          //nfID = plb->IJidx[(i2+iy)*lx+i1+ix];
           if (nfID>plb->nt){ 
             std::cout<<"error! spread to node out of fluid domain"<<std::endl;
-            std::cout<<"node id "<<nfID<<"at x="<<i1-2+m<<" y="<<i2-2+k<<std::endl;
+            std::cout<<"node id "<<nfID<<"at x="<<i1-2+ix<<" y="<<i2-2+iy<<std::endl;
           }
          // plb->computeMacros(nfID,&rho, &ux,&uy);
           //pCell->computeForce();
-          plb->force[2*nfID] +=w1[k]*w2[m]*pCell->force[2*j];
-          plb->force[2*nfID+1] +=w1[k]*w2[m]*pCell->force[2*j+1];
+          plb->force[2*nfID] +=w1[ix]*w2[iy]*pCell->force[2*j];
+          plb->force[2*nfID+1] +=w1[ix]*w2[iy]*pCell->force[2*j+1];
+          /*if (j==7){
+            std::cout<<"w1 "<<w1[ix]<<" w2 "<<w2[iy]<<std::endl;
+            std::cout<<"ux "<<pCell->v[2*j]<<" fluid at nfID "<<nfID<<" ux "<<plb->v[2*nfID]<<std::endl;
+            std::cout<<"x,y for nfID "<<plb->coor[2*nfID]<<" "<<plb->coor[2*nfID+1]<<std::endl;
+          }*/
         }
       }
     }

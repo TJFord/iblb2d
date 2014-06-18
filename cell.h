@@ -107,9 +107,10 @@ public:
   double g;
 
   double radius;//reserved for rigid spheres
-  double angRef;
+  double *angRef;
   double xc0[2];
   double xc[2];
+  double A0;
 
   int nn, nb, na;
 public:
@@ -123,9 +124,12 @@ public:
   void update();
   void updateHalf();
   void nondimension(const Units&);
+  void computeEquilibrium();
   void computeForce();
+  double computeArea();
   void bondHarmonicForce();
   void angleBendForce();
+  void areaConservationForce();
   void velocityVerletIntegration();
   void computeReference();
   void computeRigidForce();
@@ -133,5 +137,6 @@ public:
   void writeGeometry(const std::string filename);
   void writeReferenceGeometry(const std::string filename);
   void writeForce(const std::string filename);
+  void writeVelocity(const std::string filename);
 };
 #endif

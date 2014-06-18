@@ -471,6 +471,8 @@ void LB::bgk(int id, void* selfData){
     f[st+i] *= (1-omega);
     f[st+i] += omega*computeEquilibrium(i,rho, ux, uy, uSqr);
   }
+  v[2*id]=ux;
+  v[2*id+1]=uy;
 }
 
 void LB::regularized(int id, void* selfData){
@@ -494,6 +496,8 @@ void LB::regularized(int id, void* selfData){
   for (int i=0;i<9;i++){
     f[st+i] = feq[i]+(1-omega)*4.5*w[i]*(Qxx[i]*neqPixx + 2*Qxy[i]*neqPixy + Qyy[i]*neqPiyy);
   }
+  v[2*id]=ux;
+  v[2*id+1]=uy;
 }
 
 void LB::stokes(int id, void* selfData){
@@ -504,11 +508,13 @@ void LB::stokes(int id, void* selfData){
     f[st+i] *= (1-omega);
     f[st+i] += omega*computeEqStokes(i,rho, ux, uy);
   }
+  v[2*id]=ux;
+  v[2*id+1]=uy;
 }
 //void LB::applyForce(int id, double fx, double fy){
 void LB::applyForce(){
   double F[9];
-  double rho, ux, uy;
+  double ux, uy;
   double fx,fy;
   int st=0;
   int id;
@@ -516,7 +522,9 @@ void LB::applyForce(){
     st = id*9;
     fx = force[id*d];
     fy = force[id*d+1];
-    computeMacros(id,&rho, &ux, &uy);
+    //computeMacros(id,&rho, &ux, &uy);
+    ux=v[2*id];
+    uy=v[2*id+1];
     F[0]=(1.-0.5*omega)*w[0]*(3.*((   -ux)*fx +(   -uy)*fy));
     F[1]=(1.-0.5*omega)*w[1]*(3.*(( 1.-ux)*fx +(   -uy)*fy)+9.*(ux*fx));
     F[2]=(1.-0.5*omega)*w[2]*(3.*((   -ux)*fx +( 1.-uy)*fy)+9.*(uy*fy));
@@ -607,11 +615,13 @@ void LB::writeVelocity(const std::string filename){
   using namespace std;
   ofstream out(filename.c_str(),ios::out | ios::app);
     if (out.is_open()){
-      double rho;
+      //double rho;
       double ux;
       double uy;
       for (int i=0; i<nf; i++){
-        computeMacros(i, &rho, &ux, &uy);
+        //computeMacros(i, &rho, &ux, &uy);
+        ux=v[2*i];
+        uy=v[2*i+1];
         out<<setw(6)<<ux<<" "<<setw(6)<<uy<<endl;
       }
     }else{

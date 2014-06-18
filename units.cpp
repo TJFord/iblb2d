@@ -9,6 +9,7 @@ using namespace std;
 Units::Units(){
   dx=0;dt=0;dm=0;
   vis=0; u=0;
+  rho=0;
 
   omega=0; tau=0;
   nu=0; Re=0; u_lb=0;
