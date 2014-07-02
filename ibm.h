@@ -24,5 +24,6 @@ public:
   void printInfor();
   void periodic();
   void moveSolidTo(double x, double y);
+  void writeLog(const std::string filename,int ts);
 };
 #endif

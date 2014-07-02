@@ -90,6 +90,7 @@ public:
   void writeGeometry(const std::string out);
   void writeForce(const std::string out);
   void printInfor();
+  void writeLog(const std::string out);
 };
 
 #endif

@@ -290,10 +290,6 @@ void Cell::bondHarmonicForce(){
     force[2*i1+1] += fv*dy;
     force[2*i2] -= fv*dx;
     force[2*i2+1] -= fv*dy;
-    /*force[2*i1] -= fv*dx;
-    force[2*i1+1] -= fv*dy;
-    force[2*i2] += fv*dx;
-    force[2*i2+1] += fv*dy;*/
   }
 }
 
@@ -321,7 +317,6 @@ void Cell::angleBendForce(){
     if (c>1.0) c=1.0;
     if (c<-1.0) c=-1.0;
     s = sqrt(1.0 - c*c);
-    //if (s<0.0001) s=0.0001;
     if (s<0.001) s=0.001;
     s = 1.0/s;
     
@@ -467,7 +462,7 @@ void Cell::computeReference(){
   xc[0] /= nn;
   xc[1] /= nn;
   dtheta=0.;
-  //std::cout<<"center "<<center[0]<<" "<<center[1]<<std::endl;
+  //std::cout<<"center "<<xc0[0]<<" "<<xc0[1]<<std::endl;
   //std::cout<<"xc "<<xc[0]<<" "<<xc[1]<<std::endl;
   dx = x[0]-xc[0];
   dy = x[1]-xc[1];
@@ -476,6 +471,7 @@ void Cell::computeReference(){
   else if (dx < -radius)
     dx = -radius;
   angle = acos(dx/radius);
+
   dtheta += angle - angRef[0];
   for (int i=1;i<half;i++){
     dx=x[2*i]-xc[0];
@@ -500,7 +496,11 @@ void Cell::computeReference(){
 }
 
 void Cell::computeRigidForce(){
- double dx,dy;
+  double dx,dy;
+  /*for (int i=0;i<nn;i++){
+    force[2*i]=0.;
+    force[2*i+1]=0.;
+  }*/
   for (int i=0;i<nn;i++){
     dx=x[2*i]-xR[2*i];
     dy=x[2*i+1]-xR[2*i+1];
@@ -514,7 +514,7 @@ void Cell::computeRigidForce(){
 
     force[2*i] =-ks*dx;
     force[2*i+1] = -ks*dy;
-    force[2*i] += 1e-2*g;
+    force[2*i] += 1e-4*g;//1e-3*g;
     //std::cout<<"restore force"<<force[2*i]<<" "<<force[2*i+1]<<" g"<<g<<std::endl;
   } 
 }
@@ -563,5 +563,16 @@ void Cell::writeVelocity(const std::string filename){
       }else{
         cout<<"cannot open output file"<<endl;
       }
-   
+}
+
+void Cell::writeLog(const std::string filename){
+  using namespace std; 
+  ofstream out(filename.c_str(),ios::out | ios::app);
+    if (out.is_open()){
+      out<<"-----------Solid Cell-----------"<<endl;
+      out<<"ks "<<ks<<" kb "<<kb<<" kp "<<kp<<endl;
+      out<<"node: "<<nn<<" bond: "<<nb<<" angle: "<<na<<endl;
+    }else{
+      cout<<"cannot open log file"<<endl;
+    }
 }

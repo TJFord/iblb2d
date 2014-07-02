@@ -138,5 +138,6 @@ public:
   void writeReferenceGeometry(const std::string filename);
   void writeForce(const std::string filename);
   void writeVelocity(const std::string filename);
+  void writeLog(const std::string filename);
 };
 #endif

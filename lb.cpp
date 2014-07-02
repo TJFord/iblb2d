@@ -370,7 +370,32 @@ void LB::printInfor(){
   cout<<"dt = "<<pUnits->dt<<" s"<<endl;
   cout<<"********************************"<<endl;
 }
-  
+ 
+void LB::writeLog(const std::string filename){
+  using namespace std;
+  ofstream out(filename.c_str(),ios::out | ios::app);
+    if (out.is_open()){
+      out<<"********************************"<<endl;
+      out<<"IBLB program"<<endl;
+      out<<"--------------Fluid-------------"<<endl;
+      out<<"length L = "<<lx*pUnits->dx<<" m, width W = "<<ly*pUnits->dx<<" m"<<endl;
+      out<<"density = "<<pUnits->rho<<" kg/m^3"<<endl;
+      out<<"Kinetic viscosity  = "<<pUnits->vis<<" m^2/s"<<endl;
+      out<<"Characteristic L0 = "<<pUnits->dx<<endl;
+      out<<"Re = "<<pUnits->Re<<endl;
+      out<<"---------Lattice Boltzman-------"<<endl;
+      out<<"scheme = "<<collisionScheme<<endl;
+      out<<"tau = "<<pUnits->tau<<endl;
+      out<<"viscosity nu  = "<<pUnits->nu<<endl;
+      out<<"Applied LTX speed u_lb = "<<pUnits->u_lb<<endl;
+      out<<"dx = "<<pUnits->dx<<" m"<<endl;
+      out<<"dt = "<<pUnits->dt<<" s"<<endl;
+      out<<"********************************"<<endl;
+    }else{
+      cout<<"cannot open log file"<<endl;
+    }
+}
+
 void LB::init(){
   pUnits->calculateLBPara();
  // if (collisionScheme.compare("stokes")==0) 
@@ -408,10 +433,6 @@ void LB::init(){
       ft[st+j]=0.0;
     }
   }
-  /*
-  st = nf*q;
-  for (int j=0;j<q;j++)
-    f[st+j]=0.0; //extra node, doesn't matter*/
  
   if (collisionScheme.compare("bgk")==0)
     collisionFun=&LB::bgk;//fluid scheme

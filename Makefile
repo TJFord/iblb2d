@@ -17,3 +17,5 @@ fsi: $(OBJ)
 
 clean:
 	rm -f fsi vel.dat *.o *~
+remove:
+	rm fluidRst.txt fluidForce.txt cellRst.txt cellForce.txt fgeom.txt cellVelocity.txt Log.txt

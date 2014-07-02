@@ -36,40 +36,33 @@ int main(int argc, char *argv[])
   string cellVelocity="cellVelocity.txt";
   string fluidout="fluidRst.txt";
   string fluidForce="fluidForce.txt";
+  string log="Log.txt";
 
   LB channel;
   channel.readInput(fin);
   channel.init();
   channel.printInfor();
   channel.writeGeometry(fgeom);
+  channel.writeLog(log);
   
   Cell rbc;
   rbc.readInput(cin);
   rbc.init();
   rbc.nondimension(*channel.pUnits);
   //rbc.output(out);
-
+  rbc.writeLog(log);
   
   IBM cellInChanl(&channel,&rbc);
   
   int nSave =50000;
-  int nts =2500000;//100000;
+  int nts =2500001;//100000;
   //a.init();
   
   //a.printInfor();// this one should come after init();
   //a.output(out);
   
   //clock_t begin = clock();
-  for (int i=0;i<1200;i++)
-  {
-    //channel.computeVelocity();
-    
-    //a.collideSwap();
-    //a.streamSwap();
-    //a.applyBC();
-    //if (i%nSave ==0 )
-    //  a.output(out);
-
+  for (int i=0;i<12000;i++){
     //channel.collideSwap();
     //channel.streamSwap();
     
@@ -84,7 +77,7 @@ int main(int argc, char *argv[])
   
   for (int i=0;i<nts;i++){
     //---compute fluid velocity and interpret velocity---//
-    channel.computeVelocity();
+    //channel.computeVelocity();
     cellInChanl.interpret();
     //---update temporary position at half time step---//
     rbc.updateHalf();
@@ -92,15 +85,7 @@ int main(int argc, char *argv[])
     rbc.computeForce();
     //rbc.computeReference();
     //rbc.computeRigidForce();
-    /*if (i%nSave ==0 ){
-      channel.writeVelocity(fluidout);
-      channel.writeForce(fluidForce);
-      rbc.writeGeometry(cellout);
-      rbc.writeForce(cellForce);
-      rbc.writeVelocity(cellVelocity);
-      cout<<"time step "<<i<<" finsished"<<endl;
-      cout<<"area "<<rbc.computeArea()/rbc.A0<<endl;
-    }*/
+    
     //---spread force to fluid---// 
     cellInChanl.spread();
 
@@ -111,7 +96,7 @@ int main(int argc, char *argv[])
     channel.applyBC();
     
     //---compute fluid velocity and interpret velocity after force spreading---//
-    channel.computeVelocity();
+    //channel.computeVelocity();
     cellInChanl.interpret();
     //---update position at a full time step---//
     rbc.update();
@@ -124,6 +109,7 @@ int main(int argc, char *argv[])
       rbc.writeVelocity(cellVelocity);
       cout<<"time step "<<i<<" finsished"<<endl;
       cout<<"area "<<rbc.computeArea()/rbc.A0<<endl;
+      cellInChanl.writeLog(log,i);
     }
   }
   clock_t end = clock();

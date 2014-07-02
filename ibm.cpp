@@ -145,15 +145,7 @@ void IBM::interpret(){
       r2 = s2-i2;
       ph1(r1);
       ph2(r2);
-      /*if (j==7){
-        std::cout<<"interpret"<<std::endl;
-        std::cout<<"node i= "<<j<<std::endl;
-        std::cout<<"x,y "<<s1<<" "<<s2<<" i1,i2 "<<i1<<" "<<i2<<std::endl;
-        std::cout<<"x in ["<<i1-1<<" "<<i1+2<<"]"<<std::endl;
-        std::cout<<"y in ["<<i2-1<<" "<<i2+2<<"]"<<std::endl;
-      }*/
       for (int iy=0;iy<4;iy++){
-        //std::cout<<"y "<<i2-2+k<<" ";
         for (int ix=0;ix<4;ix++){
           nfID = plb->IJidx[(i2-1+iy)*lx+i1-1+ix];
           //nfID = plb->IJidx[(i2-2+iy)*lx+i1-2+ix];
@@ -163,16 +155,8 @@ void IBM::interpret(){
           //plb->computeMacros(nfID,&rho, &ux,&uy);
           pCell->v[2*j] += w1[ix]*w2[iy]*plb->v[2*nfID];
           pCell->v[2*j+1] += w1[ix]*w2[iy]*plb->v[2*nfID+1];
-          /*if (j==7){
-            std::cout<<"w1 "<<w1[ix]<<" w2 "<<w2[iy]<<std::endl;
-            std::cout<<"ux "<<pCell->v[2*j]<<" fluid at nfID "<<nfID<<" ux "<<plb->v[2*nfID]<<std::endl;
-            std::cout<<"x,y for nfID "<<plb->coor[2*nfID]<<" "<<plb->coor[2*nfID+1]<<std::endl;
-          }*/
-          //w += w1[k]*w2[m];
         }
       }
-      //std::cout<<"total weight "<<w<<std::endl;
-      //std::cout<<"vel "<<pCell->v[2*j]<<" "<<pCell->v[2*j+1]<<std::endl;
     } 
   }
 
@@ -271,7 +255,6 @@ void IBM::periodic(){
       pCell->x[2*i]= pCell->x[2*i]-(plb->lx-2*radius);
     }
   }
-  
 }
 
 void IBM::moveSolidTo(double x, double y){
@@ -282,4 +265,14 @@ void IBM::moveSolidTo(double x, double y){
     pCell->x[2*i] += dx;
     pCell->x[2*i+1] += dy;
   }
+}
+
+void IBM::writeLog(const std::string filename,int ts){
+  using namespace std;
+  ofstream out(filename.c_str(),ios::out | ios::app);
+    if (out.is_open()){
+      out<<"time step "<<ts<<" completed"<<endl;
+    }else{
+      cout<<"cannot open log file"<<endl;
+    }
 }
