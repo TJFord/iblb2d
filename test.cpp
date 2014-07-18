@@ -2,7 +2,7 @@
 #include "boundary.h"
 
 using namespace std;
-
+/*
 struct A{
   int *f;
 public:
@@ -16,13 +16,43 @@ public:
   }
   void output(){cout<<"f= "<<*f<<endl;}
   ~ A(){delete f;}
+};*/
+
+class Base{
+  public:
+    int a;
+    int *x;
+  public:
+    Base(int a_){a=a_;x=NULL;}
+    virtual ~Base(){//delete x;
+      cout<<"base destructor"<<endl;
+    }
+    virtual void out(){cout<<a*a<<endl;}
+};
+
+class Child: public Base{
+  public:
+    int b;
+  public:
+    Child(int a_, int b_):Base(a_){
+      b=b_; 
+      x=new int[5];
+      for (int i=0;i<5;i++)
+        x[i]=i;
+    }
+    ~Child(){delete x;
+      cout<<"child destructor"<<endl;
+    }
+    void out(){cout<<b*b<<endl;}
 };
 
 int main()
 {
-  A a;
-  a.output();
-  a.init(5);
-  a.output();
+  Base *pb;
+  Child child(1,2);
+  pb = &child;
+  pb->out();
+  for (int i=0;i<5;i++)
+    cout<<"x "<<pb->x[i]<<endl;
   return 0;
 }

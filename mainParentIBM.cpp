@@ -22,17 +22,18 @@ int main(int argc, char *argv[])
   //string in="input.txt";
   //string out="rst.txt";
   //string cin="cellInput.txt";
-  string cin="MultiCells.txt";
   //string cin="circle.txt";
-  //string cin="sphere.txt";
+  string cin="sphere.txt";
   //string cin="chain.txt";
   //string in="inputForce.txt";
   //string fin="inputChannel.txt";
-  string fin="shear.txt";
-  //string fin="channel.txt";
+  //string fin="shear.txt";
+  string fin="channel.txt";
+  //string fin="Velchannel.txt";
   //string fin="vonkarman.txt";
   string fgeom="fgeom.txt";
   string cellout="cellRst.txt";
+  string cellRef="cellRef.txt";
   string cellForce="cellForce.txt";
   string cellVelocity="cellVelocity.txt";
   string fluidout="fluidRst.txt";
@@ -52,18 +53,35 @@ int main(int argc, char *argv[])
   rbc.nondimension(*channel.pUnits);
   //rbc.output(out);
   rbc.writeLog(log);
+
+  Solid *pSolid;
+  pSolid = &rbc;
+
+  //IBM cellInChanl(&channel,&rbc);
+  IBM cellInChanl(&channel,pSolid);
   
-  IBM cellInChanl(&channel,&rbc);
-  
-  int nSave =5000;
-  int nts =250001;//100000;
+  int nSave =1000;//10000;//2000;
+  int nts =50001;//500000;
+  cout<<"nn="<<pSolid->nn<<endl;
+  for (int i=0;i<pSolid->nn;i++)
+    cout<<"v "<<pSolid->v[2*i]<<" "<<pSolid->v[2*i+1]<<endl;
+  //cellInChanl.moveSolidTo(395,50);
   //a.init();
-  
   //a.printInfor();// this one should come after init();
   //a.output(out);
   
   //clock_t begin = clock();
-  for (int i=0;i<12000;i++){
+  /*
+  for (int i=0;i<1200;i++)
+  {
+    //channel.computeVelocity();
+    
+    //a.collideSwap();
+    //a.streamSwap();
+    //a.applyBC();
+    //if (i%nSave ==0 )
+    //  a.output(out);
+
     //channel.collideSwap();
     //channel.streamSwap();
     
@@ -71,44 +89,40 @@ int main(int argc, char *argv[])
     channel.stream();
     channel.applyBC();
 
-  }
-     // channel.writeVelocity(fluidout);
+  }*/
   clock_t begin = clock();
   //cellInChanl.output(cellout); 
   
   for (int i=0;i<nts;i++){
-    //---compute fluid velocity and interpret velocity---//
-    //channel.computeVelocity();
     cellInChanl.interpret();
-    //---update temporary position at half time step---//
     rbc.updateHalf();
-    //---compute solid force based on temporary position---// 
-    rbc.computeForce();
-    //rbc.computeReference();
-    //rbc.computeRigidForce();
+    //rbc.computeForce();
+    rbc.computeReference();
+    rbc.computeRigidForce();
     
-    //---spread force to fluid---// 
     cellInChanl.spread();
 
-    //---LB fluid solver---// 
     channel.applyForce();
     channel.collide();
     channel.stream();
     channel.applyBC();
-    
     //---compute fluid velocity and interpret velocity after force spreading---//
-    //channel.computeVelocity();
     cellInChanl.interpret();
     //---update position at a full time step---//
     rbc.update();
     
+    //cellInChanl.periodic();
+
     if (i%nSave ==0 ){
+      cout<<"x "<<pSolid->x[0]<<" "<<pSolid->x[1]<<endl;
+      cout<<"v "<<pSolid->v[0]<<" "<<pSolid->v[1]<<endl;
       channel.writeVelocity(fluidout);
       channel.writeForce(fluidForce);
       rbc.writeGeometry(cellout);
       rbc.writeForce(cellForce);
+      rbc.writeReferenceGeometry(cellRef);
       rbc.writeVelocity(cellVelocity);
-      cout<<"time step "<<i<<" finsished"<<endl;
+      cout<<"time step "<<i<<" finished"<<endl;
       //cout<<"area "<<rbc.computeArea()/rbc.A0<<endl;
       cellInChanl.writeLog(log,i);
     }

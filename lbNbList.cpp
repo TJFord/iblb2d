@@ -28,7 +28,7 @@ void swap(double &f1, double &f2){
 
 LB::LB(){
   lx=0;ly=0;nf=0;nt=0;
-  xy2idx=NULL;
+  IJidx=NULL;
   nbList=NULL;
   f=NULL;
   ft=NULL;
@@ -48,7 +48,7 @@ LB::LB(){
 
 LB& LB::operator=(const LB& rhs){
   if (this!=&rhs){
-    delete [] xy2idx;
+    delete [] IJidx;
     delete [] nbList;
     delete [] f;
     delete [] ft;
@@ -68,10 +68,10 @@ LB& LB::operator=(const LB& rhs){
     collisionFun = rhs.collisionFun;
    
     int tmp;
-    xy2idx = new int[lx*ly];
+    IJidx = new int[lx*ly];
     tmp = lx*ly;
     for (int i=0;i<tmp;i++)
-      xy2idx[i]=rhs.xy2idx[i];
+      IJidx[i]=rhs.IJidx[i];
     
     nbList = new int[nf*(q-1)];
     tmp = nf*(q-1);
@@ -228,11 +228,11 @@ void LB::readInput(const std::string filename)
             }
             in >> coor[i*d] >> coor[i*d + 1]; //x,y
           }
-        }else if(str.compare("xy2idx") == 0){
-          xy2idx = new int[lx*ly];
+        }else if(str.compare("IJidx") == 0){
+          IJidx = new int[lx*ly];
             for (int row = 0; row < ly; row++)
               for (int col = 0; col < lx; col++)
-                in >> xy2idx[row*lx + col];
+                in >> IJidx[row*lx + col];
         }else if(str.compare("boundaries")==0){
           in >> tmp;
           while(  in >> str){
@@ -335,7 +335,7 @@ void LB::readInput(const std::string filename)
 }
 
 LB::~LB(){
-  delete [] xy2idx;
+  delete [] IJidx;
   delete [] nbList;
   delete [] f;
   delete [] ft;
@@ -563,7 +563,6 @@ void LB::applyForce(){
 void LB::stream(){
   int tgt=0; 
   int st=0;
-  //int ix,iy,tix,tiy,tmp;
   for (int i=0;i<nf;i++){
     st = i*q;
     for (int j=1;j<q;j++){
@@ -578,15 +577,6 @@ void LB::stream(){
     for (int j=1;j<q;j++){
       tgt = nbList[i*(q-1)+j-1];
       f[tgt*q+j]=ft[st+j];
-      /*ix = coor[2*i];
-      iy = coor[2*i+1];
-      tix = ix + c[j][0];
-      tiy = iy + c[j][1];
-      tmp = tiy*lx+tix;
-
-      tgt = xy2idx[tiy*lx+tix];
-      //std::cout<<"tgt "<<tgt<<" lx*ly "<<lx*ly<<" ix "<<ix<<" "<<tix<<" iy "<<iy<<" "<<tiy<<std::endl;
-      f[tgt*q+j]=ft[st+j];*/
     }   
   }
 }
@@ -679,10 +669,10 @@ void LB::writeGeometry(const std::string filename){
             out<<setw(10)<< coor[i*d]<<setw(10)<< coor[i*d + 1]; //x,y
             out<<endl;
           }
-        out<<"xy2idx"<<endl;
+        out<<"IJidx"<<endl;
         for (int row = 0; row < ly; row++){
           for (int col = 0; col < lx; col++)
-            {out<<setw(10)<< xy2idx[row*lx + col];}
+            {out<<setw(10)<< IJidx[row*lx + col];}
           out<<endl;
         }
         out<<"boundaries"<<endl;

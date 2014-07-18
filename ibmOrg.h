@@ -2,19 +2,16 @@
 #define IBM_2D_H
 
 #include "lb.h"
-//#include "cell.h"
-#include "solid.h"
+#include "cell.h"
 
 class IBM{
 public:
   LB *plb;
-  //Cell *pCell;
-  Solid *pCell;
+  Cell *pCell;
   int nc;//# of cells 
   double w1[4],w2[4];
   
-  //IBM(LB*,Cell*,int nc_=1);
-  IBM(LB*,Solid*,int nc_=1);
+  IBM(LB*,Cell*,int nc_=1);
   ~IBM();
 
   void interpret();

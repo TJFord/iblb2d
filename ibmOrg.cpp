@@ -2,17 +2,14 @@
 
 # include "ibm.h"
 # include "lb.h"
-//# include "cell.h"
+# include "cell.h"
 
 # define PI 3.14159265
 
-//IBM::IBM(LB* plb_, Cell* pCell_, int nc_){
-IBM::IBM(LB* plb_, Solid* pCell_, int nc_){
+IBM::IBM(LB* plb_, Cell* pCell_, int nc_){
   plb = plb_;
   pCell = pCell_;
-  nc = nc_;
-  pCell->lx = plb->lx;
-  pCell->ly = plb->ly;
+  nc = nc_; 
   for (int i=0;i<4;i++){
     w1[i]=0.;
     w2[i]=0.;
@@ -64,7 +61,7 @@ void IBM::printInfor(){
   for (int i=0;i<4;i++)
     std::cout<<w1[i]<<" "<<std::endl;
 }
-/*  
+  
 void IBM::output(const std::string filename){
   using namespace std; 
   std::ofstream out(filename.c_str(),std::ios::out | std::ios::app);
@@ -93,8 +90,7 @@ void IBM::output(const std::string filename){
       std::cout<<"cannot open cell output file"<<std::endl;
     }
    
-}*/
-
+}
 /*
 void IBM::interpret(){
   for (int i=0;i<nc;i++){
@@ -116,7 +112,7 @@ void IBM::interpret(){
       ph2(r2);
       for (int k=0;k<4;k++){
         for (int m=0;m<4;m++){
-          nfID = plb->xy2idx[(i1-1+k)*lx+i2-1+m];
+          nfID = plb->IJidx[(i1-1+k)*lx+i2-1+m];
           plb->computeMacros(nfID,&rho, &ux,&uy);
           pCell[i].v[2*j] += w1[k]*w2[m]*ux;
           pCell[i].v[2*j+1] += w1[k]*w2[m]*uy;
@@ -151,9 +147,9 @@ void IBM::interpret(){
       ph2(r2);
       for (int iy=0;iy<4;iy++){
         for (int ix=0;ix<4;ix++){
-          nfID = plb->xy2idx[(i2-1+iy)*lx+i1-1+ix];
-          //nfID = plb->xy2idx[(i2-2+iy)*lx+i1-2+ix];
-         // nfID = plb->xy2idx[(i2+iy)*lx+i1+ix];
+          nfID = plb->IJidx[(i2-1+iy)*lx+i1-1+ix];
+          //nfID = plb->IJidx[(i2-2+iy)*lx+i1-2+ix];
+         // nfID = plb->IJidx[(i2+iy)*lx+i1+ix];
           if (nfID > plb->nf) 
             std::cout<<"nfID "<<nfID<<" nt"<<plb->nt<<std::endl;
           //plb->computeMacros(nfID,&rho, &ux,&uy);
@@ -186,7 +182,7 @@ void IBM::spread(){
       ph2(r2);
       for (int k=0;i<4;k++){
         for (int m=0;m<4;m++){
-          nfID = plb->xy2idx[(i1-1+k)*lx+i2-1+m];
+          nfID = plb->IJidx[(i1-1+k)*lx+i2-1+m];
           plb->computeMacros(nfID,&rho, &ux,&uy);
           pCell[i].computeForce();
           plb->force[2*nfID] +=w1[k]*w2[m]*pCell[i].force[2*j];
@@ -229,9 +225,9 @@ void IBM::spread(){
       }*/
       for (int iy=0;iy<4;iy++){
         for (int ix=0;ix<4;ix++){
-          nfID = plb->xy2idx[(i2-1+iy)*lx+i1-1+ix];
-          //nfID = plb->xy2idx[(i2-2+iy)*lx+i1-2+ix];
-          //nfID = plb->xy2idx[(i2+iy)*lx+i1+ix];
+          nfID = plb->IJidx[(i2-1+iy)*lx+i1-1+ix];
+          //nfID = plb->IJidx[(i2-2+iy)*lx+i1-2+ix];
+          //nfID = plb->IJidx[(i2+iy)*lx+i1+ix];
           if (nfID>plb->nt){ 
             std::cout<<"error! spread to node out of fluid domain"<<std::endl;
             std::cout<<"node id "<<nfID<<"at x="<<i1-2+ix<<" y="<<i2-2+iy<<std::endl;
@@ -249,7 +245,7 @@ void IBM::spread(){
       }
     }
   }
-/*
+
 void IBM::periodic(){
   double radius;
   radius =1.5*pCell->radius;
@@ -260,9 +256,7 @@ void IBM::periodic(){
     }
   }
 }
-*/
 
-/*
 void IBM::moveSolidTo(double x, double y){
   pCell->computeReference();
   double dx = x - pCell->xc[0];
@@ -271,7 +265,7 @@ void IBM::moveSolidTo(double x, double y){
     pCell->x[2*i] += dx;
     pCell->x[2*i+1] += dy;
   }
-}*/
+}
 
 void IBM::writeLog(const std::string filename,int ts){
   using namespace std;

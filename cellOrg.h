@@ -2,7 +2,6 @@
 #define CELL_2D_H
 
 # include "units.h"
-# include "solid.h"
 
 struct Bond{
   int size;
@@ -86,12 +85,15 @@ public:
     delete [] ang0;
   }
 };
-class Cell: public Solid{
+class Cell{
 public:
-  //double *x;
+  double *x;
   double *xtmp;
-  //double *v;
-  //double *force;
+  double *xR;//reference position for rigids
+  double *v;
+  //double *a;
+  double *x0;
+  double *force;
   
   Bond *pBond;
   Angle *pAngle;
@@ -104,15 +106,13 @@ public:
   double m;
   double g;
 
-  //double xc[2];
-  double *A0;
+  double radius;//reserved for rigid spheres
+  double *angRef;
+  double xc0[2];
+  double xc[2];
+  double A0;
 
-  //int nn, nb, na;
-  int nb, na;
-  int ns;//# of cells
-  int nForOne;// # of nodes for each solid object
-  
-  int periodicX, periodicY;
+  int nn, nb, na;
 public:
   // creator
   Cell();
@@ -126,14 +126,16 @@ public:
   void nondimension(const Units&);
   void computeEquilibrium();
   void computeForce();
-  double computeArea(int idx);
+  double computeArea();
   void bondHarmonicForce();
   void angleBendForce();
   void areaConservationForce();
   void velocityVerletIntegration();
-  void moveTo(double x,double y);
+  void computeReference();
+  void computeRigidForce();
   // acessor
   void writeGeometry(const std::string filename);
+  void writeReferenceGeometry(const std::string filename);
   void writeForce(const std::string filename);
   void writeVelocity(const std::string filename);
   void writeLog(const std::string filename);

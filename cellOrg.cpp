@@ -8,65 +8,66 @@
 
 Cell::Cell(){
   x=NULL;
-  xc=NULL;
   xtmp=NULL;
   v=NULL;
-  A0=NULL;
+  x0=NULL;
+  xR=NULL;
   force=NULL;
   pBond=NULL;
   pAngle=NULL;
- 
+  
+  angRef=NULL;
+
   rho=0.;
   m=0.;
   ks=0.;
   kb=0.;
   kp=0.;
   g=9.8;
-
-  periodicX=0;
-  periodicY=0;
+  A0=0.;
 }
 
 Cell& Cell::operator=(const Cell& rhs){
   if(this!=&rhs){
     delete [] x;
-    delete [] xc;
     delete [] xtmp;
     delete [] v;
-    delete [] A0;
+    delete [] x0;
+    delete [] xR;
     delete [] force;
     delete pBond;
     delete pAngle;
     
+    delete [] angRef;
+
     nn=rhs.nn; nb=rhs.nb; na=rhs.na;
-    ns=rhs.ns;
     rho=rhs.rho; m=rhs.m;
     ks=rhs.ks; kb=rhs.kb;
     kp=rhs.kp;
     g=rhs.g;
-    periodicX = rhs.periodicX;
-    periodicY = rhs.periodicY;
+    A0=rhs.A0;
 
     x=new double[nn*2];
     xtmp=new double[nn*2];
+    x0=new double[nn*2];
+    xR=new double[nn*2];
     v=new double[nn*2];
     force=new double[nn*2];
+    angRef = new double[nn];
     for (int i=0;i<nn;i++){
       x[2*i]=rhs.x[2*i];
       x[2*i+1]=rhs.x[2*i+1];
       xtmp[2*i]=rhs.xtmp[2*i];
       xtmp[2*i+1]=rhs.xtmp[2*i+1];
+      x0[2*i]=rhs.x0[2*i];
+      x0[2*i+1]=rhs.x0[2*i+1];
+      xR[2*i]=rhs.xR[2*i];
+      xR[2*i+1]=rhs.xR[2*i+1];
       v[2*i]=rhs.v[2*i];
       v[2*i+1]=rhs.v[2*i+1];
       force[2*i]=rhs.force[2*i];
       force[2*i+1]=rhs.force[2*i+1];
-    }
-    xc=new double[ns*2];
-    A0=new double[ns];
-    for (int i=0;i<ns;i++){
-      xc[2*i]=rhs.xc[2*i];
-      xc[2*i+1]=rhs.xc[2*i+1];
-      A0[i]=rhs.A0[i];
+      angRef[i]=rhs.angRef[i];
     }
     int size;
     pBond = new Bond;
@@ -106,18 +107,15 @@ void Cell::readInput(const std::string filename){
         in>>kb;
       }else if(str.compare("kp")==0){
         in>>kp;
-      }else if(str.compare("periodic")==0){
-        in>>periodicX>>periodicY;
-      }else if(str.compare("ns")==0){
-        in>>ns;
-        xc=new double[ns*2];
-        A0=new double[ns];
       }else if(str.compare("node")==0){
         in>>nn;
         x=new double[nn*2];
         xtmp=new double[nn*2];
+        x0=new double[nn*2];
+        xR=new double[nn*2];
         v=new double[nn*2];
         force=new double[nn*2];
+        angRef=new double[nn];
 
         for (int i=0;i<nn;i++)
           in>>x[2*i]>>x[2*i+1];
@@ -148,40 +146,29 @@ void Cell::readInput(const std::string filename){
 
 Cell::~Cell(){
   delete [] x;
-  delete [] xc;
-  delete [] A0;
   delete [] xtmp;
   delete [] v;
+  delete [] x0;
+  delete [] xR;
   delete [] force;
+  delete [] angRef;
   delete pBond;
   delete pAngle;
 }
 
 void Cell::init(){
+  double dx,dy;
+  xc0[0]=0.;
+  xc0[1]=0.;
   for (int i=0;i<nn;i++){
-    //xc0[0] += x[2*i];
-    //xc0[1] += x[2*i+1];
-    v[2*i]=0.;
-    v[2*i+1]=0.;
+    xR[2*i] =x[2*i];
+    xR[2*i+1]=x[2*i+1];
+    x0[2*i] =x[2*i];
+    x0[2*i+1]=x[2*i+1];
+    xc0[0] += x[2*i];
+    xc0[1] += x[2*i+1];
     //std::cout<<"xhalf "<<xhalf[2*i]<<" "<<xhalf[2*i+1]<<std::endl;
   }
-  for (int i=0;i<ns;i++){
-    A0[i] = computeArea(i);
-  }
-  nForOne=nn/ns;
-  /*int tmp;
-  for (int i=0;i<ns;i++){
-    xc[2*i]=0.;
-    xc[2*i+1]=0.;
-    for (int j=0;j<nForOne;j++){
-      tmp = i*nForOne + j;
-      xc[2*i] += x[2*tmp];
-      xc[2*i+1] += x[2*tmp+1];
-    }
-    xc[2*i] /= nForOne;
-    xc[2*i+1] /= nForOne;*/
-  
-/*
   A0=computeArea();
   //x[0] *= 1.5;
   //x[4] -=0.5;
@@ -199,40 +186,17 @@ void Cell::init(){
     angRef[i]=acos(dx/radius);
     //if (i<20)
     //  x[2*i+1] += 1;
-  }*/
+  }
   //computeEquilibrium();
 }
 
 void Cell::update(){
-  
   for (int i=0;i<nn;i++){
     x[2*i] = xtmp[2*i]+v[2*i];
     x[2*i+1] =xtmp[2*i+1]+v[2*i+1];
-
-    if (periodicX){
-      if (x[2*i] < 0.) x[2*i] += lx;
-      if (x[2*i] >= lx) x[2*i] -= lx;
-    }
-    if (periodicY){
-      if (x[2*i+1] < 0.) x[2*i+1] += ly;
-      if (x[2*i+1] >= ly) x[2*i+1] -= ly;
-    }
+    //x[2*i] = xtmp[2*i]+100*v[2*i];
+    //x[2*i+1] =xtmp[2*i+1]+100*v[2*i+1];
   }
-  /*
-  int tmp;
-  for (int i=0;i<ns;i++){
-    xc[2*i]=0.;
-    xc[2*i+1]=0.;
-    for (int j=0;j<nForOne;j++){
-      tmp = i*nForOne+j;
-      x[2*tmp] = xtmp[2*tmp] + v[2*tmp];
-      x[2*tmp+1] = xtmp[2*tmp+1] + v[2*tmp+1];
-      xc[2*i] += x[2*tmp];
-      xc[2*i+1] += x[2*tmp+1];
-    }
-    xc[2*i] /= nForOne;
-    xc[2*i+1] /= nForOne;
-  }*/
 }
 
 void Cell::updateHalf(){
@@ -293,36 +257,19 @@ void Cell::computeEquilibrium(){
       s = 1.0/s;
       pAngle->ang0[i]=acos(c);
     }
+     
+     
 }
 
 void Cell::bondHarmonicForce(){
   //--calculate bond force with F = ks*(r-r0)---//
   double dx,dy,rsq,r,fv,dr;
   int i1,i2;
-  double halfX, halfY;
-  halfX=0.5*lx;
-  halfY=0.5*ly;
   for (int i=0;i<nb;i++){
     i1=pBond->first[i];
     i2=pBond->next[i];
     dx=x[2*i1]-x[2*i2];
     dy=x[2*i1+1]-x[2*i2+1];
-    if (periodicX){
-      if (std::abs(dx)>halfX){
-        if (dx > 0.)   
-          dx=x[2*i1]-x[2*i2]-lx;
-        else
-          dx=x[2*i1]-x[2*i2]+lx;
-      }
-    }
-    if (periodicY){
-      if (std::abs(dy)>halfY){
-        if (dy > 0.)   
-          dy=x[2*i1+1]-x[2*i2+1]-ly;
-        else
-          dy=x[2*i1+1]-x[2*i2+1]+ly;
-      }
-    }
     rsq = dx*dx+dy*dy;
   /*  if (i==nb-1){
       std::cout<<"x "<<i1<<" "<<xhalf[2*i1]<<" "<<xhalf[2*i1+1]<<std::endl;
@@ -352,8 +299,6 @@ void Cell::angleBendForce(){
   double dx1, dy1, dx2,dy2, rsq1, rsq2, r1,r2;
   double c, s;//cosine, sine
   double dtheta,a,a11,a12,a22,f1x,f1y,f3x,f3y;
-  double halfX = 0.5*lx;
-  double halfY = 0.5*ly;
   for (int i=0;i<na;i++){
     i1 = pAngle->left[i];
     i2 = pAngle->middle[i];
@@ -362,34 +307,6 @@ void Cell::angleBendForce(){
     dy1 = x[2*i1+1]-x[2*i2+1];
     dx2 = x[2*i3]-x[2*i2];
     dy2 = x[2*i3+1]-x[2*i2+1];
-    if (periodicX){
-      if (std::abs(dx1)>halfX){
-        if (dx1 > 0.)   
-          dx1=x[2*i1]-x[2*i2]-lx;
-        else
-          dx1=x[2*i1]-x[2*i2]+lx;
-      }
-      if (std::abs(dx2)>halfX){
-        if (dx2 > 0.)   
-          dx2=x[2*i3]-x[2*i2]-lx;
-        else
-          dx2=x[2*i3]-x[2*i2]+lx;
-      }
-    }
-    if (periodicY){
-      if (std::abs(dy1)>halfY){
-        if (dy1 > 0.)   
-          dy1=x[2*i1+1]-x[2*i2+1]-ly;
-        else
-          dy1=x[2*i1+1]-x[2*i2+1]+ly;
-      }
-      if (std::abs(dy2)>halfY){
-        if (dy2 > 0.)   
-          dy2=x[2*i3+1]-x[2*i2+1]-ly;
-        else
-          dy2=x[2*i3+1]-x[2*i2+1]+ly;
-      }
-    }
     rsq1 = dx1*dx1+dy1*dy1;
     rsq2 = dx2*dx2+dy2*dy2;
     r1 = sqrt(rsq1);
@@ -425,37 +342,15 @@ void Cell::angleBendForce(){
   }
 }
 
-double Cell::computeArea(int idx){
+double Cell::computeArea(){
   double dx,dy,area;
   int i1,i2;
-  int bst, bnd, nbForOne;
-  double halfX = 0.5*lx;
-  double halfY = 0.5*ly;
   area=0.;
-  nbForOne = nb/ns;
-  bst = idx*nbForOne;
-  bnd = idx*nbForOne + nbForOne;
-  for (int i=bst;i<bnd;i++){
+  for (int i=0;i<nb;i++){
     i1=pBond->first[i];
     i2=pBond->next[i];
     dx=x[2*i1]-x[2*i2];
     dy=x[2*i1+1]-x[2*i2+1];
-    if (periodicX){
-      if (std::abs(dx)>halfX){
-        if (dx > 0.)   
-          dx=x[2*i1]-x[2*i2]-lx;
-        else
-          dx=x[2*i1]-x[2*i2]+lx;
-      }
-    }
-    if (periodicY){
-      if (std::abs(dy)>halfY){
-        if (dy > 0.)   
-          dy=x[2*i1+1]-x[2*i2+1]-ly;
-        else
-          dy=x[2*i1+1]-x[2*i2+1]+ly;
-      }
-    }
     area += x[2*i1]*dy - x[2*i1+1]*dx;
   }
   return 0.5*sqrt(area*area);  
@@ -467,45 +362,22 @@ void Cell::areaConservationForce(){
   //double r, rsq;
   double nx,ny;//normal vector
   int i1,i2;
-  int bst, bnd, nbForOne;
-  nbForOne = nb/ns;
-  double halfX = 0.5*lx;
-  double halfY = 0.5*ly;
-  for (int j=0;j<ns;j++){
-    area=computeArea(j);
-    //std::cout<<"A0 "<<A0<<" "<<area<<std::endl;
-    bst = j*nbForOne;
-    bnd = bst + nbForOne;
-    for (int i=bst;i<bnd;i++){
-      i1=pBond->first[i];
-      i2=pBond->next[i];
-      dx=x[2*i1]-x[2*i2];
-      dy=x[2*i1+1]-x[2*i2+1];
-      if (periodicX){
-        if (std::abs(dx)>halfX){
-          if (dx > 0.)   
-            dx=x[2*i1]-x[2*i2]-lx;
-          else
-            dx=x[2*i1]-x[2*i2]+lx;
-        }
-      }
-      if (periodicY){
-        if (std::abs(dy)>halfY){
-          if (dy > 0.)   
-            dy=x[2*i1+1]-x[2*i2+1]-ly;
-          else
-            dy=x[2*i1+1]-x[2*i2+1]+ly;
-        }
-      }
-      //rsq = dx*dx+dy*dy;
-      //r = sqrt(rsq);
-      nx = -dy;
-      ny = dx;
+  area=computeArea();
+  //std::cout<<"A0 "<<A0<<" "<<area<<std::endl;
+  for (int i=0;i<nb;i++){
+    i1=pBond->first[i];
+    i2=pBond->next[i];
+    dx=x[2*i1]-x[2*i2];
+    dy=x[2*i1+1]-x[2*i2+1];
+   
+    //rsq = dx*dx+dy*dy;
+    //r = sqrt(rsq);
+    nx = -dy;
+    ny = dx;
 
-      fv = -kp*(area-A0[j]);
-      force[2*i1] += fv*nx;
-      force[2*i1+1] += fv*ny;
-    }
+    fv = -kp*(area-A0);
+    force[2*i1] += fv*nx;
+    force[2*i1+1] += fv*ny;
   }
 }
 
@@ -571,15 +443,80 @@ void Cell::output(const std::string filename){
 }
 */
 
+void Cell::computeReference(){
+  double dx,dy;
+  double angle,dtheta;
+  double c,s;
+  int half;
+  if (nn%2)
+    half = (nn+1)/2;
+  else
+    half = nn/2;
 
-void Cell::moveTo(double x, double y){
-/*  computeReference();
-  double dx = x - xc[0];
-  double dy = y - xc[1];
+  xc[0]=0.;
+  xc[1]=0.;
+  for(int i=0;i<nn;i++){
+    xc[0] += x[2*i];
+    xc[1] += x[2*i+1];
+  }
+  xc[0] /= nn;
+  xc[1] /= nn;
+  dtheta=0.;
+  //std::cout<<"center "<<xc0[0]<<" "<<xc0[1]<<std::endl;
+  //std::cout<<"xc "<<xc[0]<<" "<<xc[1]<<std::endl;
+  dx = x[0]-xc[0];
+  dy = x[1]-xc[1];
+  if (dx > radius)
+    dx = radius;
+  else if (dx < -radius)
+    dx = -radius;
+  angle = acos(dx/radius);
+
+  dtheta += angle - angRef[0];
+  for (int i=1;i<half;i++){
+    dx=x[2*i]-xc[0];
+    if (dx > radius)
+      dx = radius;
+    else if (dx < -radius)
+      dx = -radius;
+    angle = acos(dx/radius);
+    dtheta += angle - angRef[i];
+  }
+  dtheta /= half;
+ // std::cout<<"dx "<<dx<<" "<<dy<<" "<<angle<<std::endl;
+  c = cos(dtheta);
+  s = sin(dtheta);
   for (int i=0;i<nn;i++){
-    x[2*i] += dx;
-    x[2*i+1] += dy;
+    dx = x0[2*i]-xc0[0];
+    dy = x0[2*i+1]-xc0[1];
+    xR[2*i] = xc[0]+ c*dx - s*dy;
+    xR[2*i+1] = xc[1]+ s*dx + c*dy;
+    //std::cout<<"X0 "<<x0[2*i]<<" "<<x0[2*i+1]<<" "<<c<<" "<<s<<std::endl;
+  }
+}
+
+void Cell::computeRigidForce(){
+  double dx,dy;
+  /*for (int i=0;i<nn;i++){
+    force[2*i]=0.;
+    force[2*i+1]=0.;
   }*/
+  for (int i=0;i<nn;i++){
+    dx=x[2*i]-xR[2*i];
+    dy=x[2*i+1]-xR[2*i+1];
+    //rsq = dx*dx+dy*dy;
+  /*  if (i==nb-1){
+      std::cout<<"x "<<i1<<" "<<xhalf[2*i1]<<" "<<xhalf[2*i1+1]<<std::endl;
+      std::cout<<"x "<<xhalf[2*i2]<<" "<<xhalf[2*i2+1]<<std::endl;
+      std::cout<<"rsq"<<rsq<<std::endl;
+    }*/
+    //std::cout<<"rsq"<<rsq<<" i1 "<<i1<<" "<<i2<<std::endl;
+
+    force[2*i] =-ks*dx;
+    force[2*i+1] = -ks*dy;
+    force[2*i] += 1e-4*g;//1e-3*g;
+    //std::cout<<"restore force"<<force[2*i]<<" "<<force[2*i+1]<<" g"<<g<<std::endl;
+  } 
 }
 
 void Cell::writeGeometry(const std::string filename){
@@ -593,6 +530,17 @@ void Cell::writeGeometry(const std::string filename){
     }
 }
 
+
+void Cell::writeReferenceGeometry(const std::string filename){
+  using namespace std; 
+  ofstream out(filename.c_str(),ios::out | ios::app);
+    if (out.is_open()){
+      for (int i=0;i<nn;i++)
+        out<<setw(10)<<xR[2*i]<<" "<<setw(10)<<xR[2*i+1]<<endl; 
+    }else{
+      cout<<"cannot open output file"<<endl;
+    } 
+}
 
 void Cell::writeForce(const std::string filename){
   using namespace std; 

@@ -24,7 +24,7 @@ class LB
 {
 public:
   int lx,ly;//bounding box
-  int *xy2idx;//semi direct address index
+  int *IJidx;//semi direct address index
   int *nbList;//neighbor list
   int nf; // total fluid nodes
   int nt; // all nodes including buffer
