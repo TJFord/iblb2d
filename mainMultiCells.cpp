@@ -28,8 +28,7 @@ int main(int argc, char *argv[])
   //string cin="chain.txt";
   //string in="inputForce.txt";
   //string fin="inputChannel.txt";
-  //string fin="shear.txt";
-  string fin="Velchannel.txt";
+  string fin="shear.txt";
   //string fin="channel.txt";
   //string fin="vonkarman.txt";
   string fgeom="fgeom.txt";
@@ -56,8 +55,8 @@ int main(int argc, char *argv[])
   
   IBM cellInChanl(&channel,&rbc);
   
-  int nSave =50000;
-  int nts =2500001;//100000;
+  int nSave =5000;
+  int nts =250001;//100000;
   //a.init();
   
   //a.printInfor();// this one should come after init();

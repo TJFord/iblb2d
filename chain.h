@@ -1,5 +1,5 @@
-#ifndef CELL_2D_H
-#define CELL_2D_H
+#ifndef CHAIN_2D_H
+#define CHAIN_2D_H
 
 # include "units.h"
 # include "solid.h"
@@ -87,7 +87,7 @@ public:
   }
 };*/
 
-class Cell: public Solid{
+class Chain: public Solid{
 public:
   //double *x;
   double *xtmp;
@@ -106,7 +106,6 @@ public:
   double g;
 
   //double xc[2];
-  double *A0;
 
   //int nn, nb, na;
   int nb, na;
@@ -116,9 +115,9 @@ public:
   int periodicX, periodicY;
 public:
   // creator
-  Cell();
-  ~Cell();
-  Cell& operator=(const Cell& rhs);
+  Chain();
+  ~Chain();
+  Chain& operator=(const Chain& rhs);
   void readInput(const std::string filename);
   void init();
   // manipulator
@@ -127,10 +126,10 @@ public:
   void nondimension(const Units&);
   void computeEquilibrium();
   void computeForce();
-  double computeArea(int idx);
+  //double computeArea(int idx);
   void bondHarmonicForce();
   void angleBendForce();
-  void areaConservationForce();
+  //void areaConservationForce();
   void velocityVerletIntegration();
   void moveTo(double x,double y);
   // acessor

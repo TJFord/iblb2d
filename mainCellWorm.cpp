@@ -14,6 +14,7 @@ using namespace std;
 #include "boundary.h"
 #include "units.h"
 #include "cell.h"
+#include "chain.h"
 #include "ibm.h"
 
 int main(int argc, char *argv[])
@@ -23,6 +24,7 @@ int main(int argc, char *argv[])
   //string out="rst.txt";
   //string cin="cellInput.txt";
   string cin="MultiCells.txt";
+  string win="MultiWorms.txt";
   //string cin="circle.txt";
   //string cin="sphere.txt";
   //string cin="chain.txt";
@@ -36,6 +38,8 @@ int main(int argc, char *argv[])
   string cellout="cellRst.txt";
   string cellForce="cellForce.txt";
   string cellVelocity="cellVelocity.txt";
+  string wormout="chainRst.txt";
+  string wormForce="chainForce.txt";
   string fluidout="fluidRst.txt";
   string fluidForce="fluidForce.txt";
   string log="Log.txt";
@@ -54,7 +58,16 @@ int main(int argc, char *argv[])
   //rbc.output(out);
   rbc.writeLog(log);
   
+  Chain worm;
+  worm.readInput(win);
+  worm.init();
+  worm.nondimension(*channel.pUnits);
+  //rbc.output(out);
+  worm.writeLog(log);
+  
+
   IBM cellInChanl(&channel,&rbc);
+  IBM wormInChanl(&channel,&worm);
   
   int nSave =50000;
   int nts =2500001;//100000;
@@ -81,15 +94,20 @@ int main(int argc, char *argv[])
     //---compute fluid velocity and interpret velocity---//
     //channel.computeVelocity();
     cellInChanl.interpret();
+    wormInChanl.interpret();
     //---update temporary position at half time step---//
     rbc.updateHalf();
+    worm.updateHalf();
     //---compute solid force based on temporary position---// 
     rbc.computeForce();
+    worm.computeForce();
     //rbc.computeReference();
     //rbc.computeRigidForce();
     
     //---spread force to fluid---// 
     cellInChanl.spread();
+    wormInChanl.spread();
+
 
     //---LB fluid solver---// 
     channel.applyForce();
@@ -100,8 +118,10 @@ int main(int argc, char *argv[])
     //---compute fluid velocity and interpret velocity after force spreading---//
     //channel.computeVelocity();
     cellInChanl.interpret();
+    wormInChanl.interpret();
     //---update position at a full time step---//
     rbc.update();
+    worm.update();
     
     if (i%nSave ==0 ){
       channel.writeVelocity(fluidout);
@@ -109,6 +129,8 @@ int main(int argc, char *argv[])
       rbc.writeGeometry(cellout);
       rbc.writeForce(cellForce);
       rbc.writeVelocity(cellVelocity);
+      worm.writeGeometry(wormout);
+      worm.writeForce(wormForce);
       cout<<"time step "<<i<<" finsished"<<endl;
       //cout<<"area "<<rbc.computeArea()/rbc.A0<<endl;
       cellInChanl.writeLog(log,i);
