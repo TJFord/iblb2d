@@ -14,13 +14,16 @@ Chain::Chain(){
   force=NULL;
   pBond=NULL;
   pAngle=NULL;
- 
+  random=NULL;
+
   rho=0.;
   m=0.;
   ks=0.;
   kb=0.;
   kp=0.;
   g=9.8;
+  diffusionCoef=0;
+  sigma=0.;
 
   periodicX=0;
   periodicY=0;
@@ -35,6 +38,7 @@ Chain& Chain::operator=(const Chain& rhs){
     delete [] force;
     delete pBond;
     delete pAngle;
+    delete random;
     
     nn=rhs.nn; nb=rhs.nb; na=rhs.na;
     ns=rhs.ns;
@@ -42,6 +46,9 @@ Chain& Chain::operator=(const Chain& rhs){
     ks=rhs.ks; kb=rhs.kb;
     kp=rhs.kp;
     g=rhs.g;
+    diffusionCoef=rhs.diffusionCoef;
+    sigma=rhs.sigma;
+
     periodicX = rhs.periodicX;
     periodicY = rhs.periodicY;
 
@@ -96,6 +103,8 @@ void Chain::readInput(const std::string filename){
       //in>>str;
       if(str.compare("m")==0){
         in>>m;
+      }else if(str.compare("diffusion")==0){
+        in>>diffusionCoef;
       }else if(str.compare("ks")==0){
         in>>ks;
       }else if(str.compare("kb")==0){
@@ -149,6 +158,7 @@ Chain::~Chain(){
   delete [] force;
   delete pBond;
   delete pAngle;
+  delete random;
 }
 
 void Chain::init(){
@@ -190,6 +200,7 @@ void Chain::init(){
     //  x[2*i+1] += 1;
   }*/
   //computeEquilibrium();
+  random = new RanMars(12379);
 }
 
 void Chain::update(){
@@ -244,6 +255,9 @@ void Chain::nondimension(const Units& unt){
   kp *= unt.dt*unt.dt*unt.dx/unt.dm;
   m /= unt.dm;
   g *= unt.dt*unt.dt/unt.dx;
+  diffusionCoef *= unt.dt/unt.dx/unt.dx;
+  sigma = 2*diffusionCoef;
+  std::cout<<"sigma"<<sigma<<std::endl;
   std::cout<<"ks, kb, kp "<<ks<<" "<<kb<<" "<<kp<<std::endl;
 }
 
@@ -485,6 +499,16 @@ void Chain::moveTo(double x, double y){
     x[2*i] += dx;
     x[2*i+1] += dy;
   }*/
+}
+
+void Chain::thermalFluctuation(){
+  double dx, dy;
+  for (int i=0;i<nn;i++){
+    dx =2*sigma*random->gaussian();
+    dy = 2*sigma*random->gaussian();
+    x[2*i] += dx;
+    x[2*i+1] += dy;
+  }
 }
 
 void Chain::writeGeometry(const std::string filename){
