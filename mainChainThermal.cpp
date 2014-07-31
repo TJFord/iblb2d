@@ -69,8 +69,6 @@ int main(int argc, char *argv[])
 
   //IBM cellInChanl(&channel,&rbc);
   IBM wormInChanl(&channel,&worm);
-
-  worm.initLJ();
   
   int nSave =5000;
   int nts =250001;//100000;
@@ -105,8 +103,6 @@ int main(int argc, char *argv[])
     //---compute solid force based on temporary position---// 
     //rbc.computeForce();
     worm.computeForce();
-    //worm.buildLinkList();
-    //worm.pairWiseInteraction();
     //rbc.computeReference();
     //rbc.computeRigidForce();
     
@@ -128,7 +124,7 @@ int main(int argc, char *argv[])
     //---update position at a full time step---//
     //rbc.update();
     worm.update();
-    //worm.thermalFluctuation();
+    worm.thermalFluctuation();
     
     if (i%nSave ==0 ){
       channel.writeVelocity(fluidout);

@@ -16,6 +16,9 @@ Chain::Chain(){
   pAngle=NULL;
   random=NULL;
 
+  lscl=NULL;
+  head=NULL;
+
   rho=0.;
   m=0.;
   ks=0.;
@@ -23,7 +26,7 @@ Chain::Chain(){
   kp=0.;
   g=9.8;
   diffusionCoef=0;
-  sigma=0.;
+  diffDist=0.;
 
   periodicX=0;
   periodicY=0;
@@ -39,6 +42,9 @@ Chain& Chain::operator=(const Chain& rhs){
     delete pBond;
     delete pAngle;
     delete random;
+
+    delete [] lscl;
+    delete [] head;
     
     nn=rhs.nn; nb=rhs.nb; na=rhs.na;
     ns=rhs.ns;
@@ -46,11 +52,19 @@ Chain& Chain::operator=(const Chain& rhs){
     ks=rhs.ks; kb=rhs.kb;
     kp=rhs.kp;
     g=rhs.g;
+    lx=rhs.lx; ly=rhs.ly;
     diffusionCoef=rhs.diffusionCoef;
-    sigma=rhs.sigma;
+    diffDist=rhs.diffDist;
+    
+    rCut=rhs.rCut;
+    cx=rhs.cx;
+    cy=rhs.cy;
 
     periodicX = rhs.periodicX;
     periodicY = rhs.periodicY;
+    
+    lscl=new int[nn]; //have to rebuild each time
+    head=new int[cx*cy];
 
     x=new double[nn*2];
     xtmp=new double[nn*2];
@@ -111,6 +125,8 @@ void Chain::readInput(const std::string filename){
         in>>kb;
       }else if(str.compare("kp")==0){
         in>>kp;
+      }else if(str.compare("ljcut")==0){
+        in>>epsilon>>sigma>>rCut;
       }else if(str.compare("periodic")==0){
         in>>periodicX>>periodicY;
       }else if(str.compare("ns")==0){
@@ -159,6 +175,8 @@ Chain::~Chain(){
   delete pBond;
   delete pAngle;
   delete random;
+  delete [] lscl;
+  delete [] head;
 }
 
 void Chain::init(){
@@ -256,8 +274,12 @@ void Chain::nondimension(const Units& unt){
   m /= unt.dm;
   g *= unt.dt*unt.dt/unt.dx;
   diffusionCoef *= unt.dt/unt.dx/unt.dx;
-  sigma = 2*diffusionCoef;
-  std::cout<<"sigma"<<sigma<<std::endl;
+  diffDist = 2*diffusionCoef;
+  rCut /= unt.dx;
+  sigma /= unt.dx;
+  epsilon *= unt.dt*unt.dt/unt.dm/unt.dx/unt.dx;
+  std::cout<<"rCut,sigma "<<rCut<<" "<<sigma<<std::endl;
+  std::cout<<"diffDist"<<diffDist<<std::endl;
   std::cout<<"ks, kb, kp "<<ks<<" "<<kb<<" "<<kp<<std::endl;
 }
 
@@ -434,8 +456,15 @@ void Chain::computeForce(){
     force[2*i]=0.;
     force[2*i+1]=0.;
   }
-  bondHarmonicForce();
-  angleBendForce();
+  if (nb)
+    bondHarmonicForce();
+  if (na)
+    angleBendForce();
+  if (rCut){
+    buildLinkList();
+    pairWiseInteraction();
+  }
+
   //std::cout<<"ks"<<ks<<std::endl;
   //for (int i=0;i<nn;i++)
   //  std::cout<<i<<" force "<<force[2*i]<<" "<<force[2*i+1]<<std::endl; 
@@ -504,10 +533,135 @@ void Chain::moveTo(double x, double y){
 void Chain::thermalFluctuation(){
   double dx, dy;
   for (int i=0;i<nn;i++){
-    dx =2*sigma*random->gaussian();
-    dy = 2*sigma*random->gaussian();
+    dx = diffDist*random->gaussian();
+    dy = diffDist*random->gaussian();
     x[2*i] += dx;
     x[2*i+1] += dy;
+  }
+}
+
+void Chain::initLJ(){
+  if (lx==0 || ly==0)
+    std::cout<<"particle doesn't know fluid geometry size"<<std::endl;
+  cx = floor(lx/rCut);
+  cy = floor(ly/rCut);
+  std::cout<<"cx,cy "<<cx<<" "<<cy<<std::endl;
+  lscl=new int[nn];
+  head=new int[cx*cy];
+
+  rrCut=rCut*rCut;
+  sig2=sigma*sigma;
+  sig6=sig2*sig2*sig2;
+}
+
+void Chain::buildLinkList(){
+  int cellSize=cx*cy;
+  int idx,idy,idc;
+  double dx,dy;
+  dx = lx/cx;
+  dy = ly/cy;
+  for (int i=0;i<cellSize;i++)
+    head[i]=EMPTY;
+  for (int i=0;i<nn;i++){
+    idx = floor(x[2*i]/dx);
+    idy = floor(x[2*i+1]/dy);
+    idc = idy*cx + idx;
+    lscl[i]=head[idc];
+    head[idc]=i;
+  }
+}
+
+void Chain::pairWiseInteraction(){
+  int idc,idc_nb;
+  int i,j;
+  //double dx,dy,rsq;//r
+  //double sig2,sig6,ri2,ri6,fcVal;
+
+  //sig2=sigma*sigma;
+  //sig6=sig2*sig2*sig2;
+  // scan all the cells through x, and y direction
+  for (int idcy=0;idcy<cy;idcy++){
+    for (int idcx=0;idcx<cx;idcx++){
+      idc = idcy*cx + idcx;
+      if (head[idc]==EMPTY) continue;
+      //scan neighbor cells
+      for (int nby=idcy-1;nby<=idcy+1;nby++){
+        for (int nbx=idcx-1;nbx<=idcx+1;nbx++){
+          //when cell is on the edge, -1 could lead to out of boundary
+          
+          if (periodicX && periodicY){
+            idc_nb = ((nby+cy)%cy)*cx+((nbx+cx)%cx);
+          }else if (periodicX){
+            if (nby== -1 || nby == cy) 
+              continue;
+            else 
+              idc_nb = nby*cx + ((nbx+cx)%cx);
+          }else if (periodicY){
+            if (nbx == -1 || nbx == cx)
+              continue;
+            else
+              idc_nb = ((nby+cy)%cy)*cx + nbx;
+          }else{
+            if (nby== -1 || nby == cy) 
+              continue;
+            if (nbx == -1 || nbx == cx)
+              continue;
+             
+            idc_nb = nby*cx + nbx;
+          }
+
+
+          if (head[idc_nb]==EMPTY) continue;
+          i=head[idc];
+          while(i!=EMPTY){
+            j=head[idc_nb];
+            while(j!=EMPTY){
+              if (i<j) LJForce(i,j);
+              j=lscl[j];
+            }//end of loop j
+            i=lscl[i];
+          }//eof loop i
+        }//eof nbx
+      }//eof nby
+    }//eof idcx
+  }//eof idcy
+  
+}
+
+void Chain::LJForce(int i,int j){
+  double dx,dy,rsq,ri2,ri6,fcVal;
+  double halfX, halfY;
+  halfX = 0.5*lx;
+  halfY = 0.5*ly;
+  dx = x[2*i]-x[2*j];
+  dy = x[2*i+1]-x[2*j+1];
+  if (periodicX){
+    if (std::abs(dx)>halfX){
+      if (dx > 0.)   
+        dx=x[2*i]-x[2*j]-lx;
+      else
+        dx=x[2*i]-x[2*j]+lx;
+    }
+  }
+  if (periodicY){
+    if (std::abs(dy)>halfY){
+      if (dy > 0.)   
+        dy=x[2*i+1]-x[2*j+1]-ly;
+      else
+        dy=x[2*i+1]-x[2*j+1]+ly;
+    }
+  }
+  rsq = dx*dx + dy*dy;
+  //std::cout<<"i,j"<<i<<" "<<j<<" "<<rsq<<std::endl;
+  // periodic conditions not considered yet 
+  if (rsq < rrCut){
+    ri2=1.0/rsq;ri6=ri2*ri2*ri2;
+    //r=sqrt(rsq);
+    fcVal=48.0*epsilon*ri2*ri6*sig6*(sig6*ri6-0.5);
+    force[2*i] += fcVal*dx;
+    force[2*i+1] += fcVal*dy;
+    force[2*j] -= fcVal*dx;
+    force[2*j+1] -= fcVal*dy;
   }
 }
 

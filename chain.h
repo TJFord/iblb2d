@@ -1,8 +1,11 @@
 #ifndef CHAIN_2D_H
 #define CHAIN_2D_H
-
+//# include <random>
+# include "random_mars.h"
 # include "units.h"
 # include "solid.h"
+
+#define EMPTY -1
 /*
 struct Bond{
   int size;
@@ -98,6 +101,8 @@ public:
   Angle *pAngle;
 
   double rho;
+  double diffusionCoef;
+  double diffDist;
   double ks;
   double kb;
   double kp;
@@ -113,6 +118,22 @@ public:
   int nForOne;// # of nodes for each solid object
   
   int periodicX, periodicY;
+  //double halfX, halfY;
+  //random number generator:
+  // this one needs c++11 suport, include headfile <random>
+  //std::default_random_engine generator;
+  //std::normal_distribution<double> ndist;
+  //portable random file from lammps
+  RanMars *random;
+
+  //linked list cells for pairwise potential
+  int *lscl;//list of cell link
+  int *head; //head for each cell
+  double rCut,rrCut;//cut of distance and its square
+  double sig2,sig6;
+  int cx,cy;//cell number in x,y direction
+  double epsilon, sigma;
+
 public:
   // creator
   Chain();
@@ -126,12 +147,15 @@ public:
   void nondimension(const Units&);
   void computeEquilibrium();
   void computeForce();
-  //double computeArea(int idx);
   void bondHarmonicForce();
   void angleBendForce();
-  //void areaConservationForce();
   void velocityVerletIntegration();
   void moveTo(double x,double y);
+  void thermalFluctuation();
+  void initLJ();
+  void buildLinkList();
+  void pairWiseInteraction();
+  void LJForce(int i,int j);
   // acessor
   void writeGeometry(const std::string filename);
   void writeForce(const std::string filename);

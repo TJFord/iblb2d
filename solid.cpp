@@ -11,6 +11,8 @@ Solid::Solid(){
   v=NULL;
   xc=NULL;
   force=NULL;
+  lx=0;
+  ly=0;
 }
 
 Solid::~Solid(){
