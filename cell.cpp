@@ -517,7 +517,8 @@ void Cell::computeForce(){
   bondHarmonicForce();
   angleBendForce();
   areaConservationForce();
-  //std::cout<<"ks"<<ks<<std::endl;
+
+  //std::cout<<"cell force"<<std::endl;
   //for (int i=0;i<nn;i++)
   //  std::cout<<i<<" force "<<force[2*i]<<" "<<force[2*i+1]<<std::endl; 
 }

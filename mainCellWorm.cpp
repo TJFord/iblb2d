@@ -24,7 +24,8 @@ int main(int argc, char *argv[])
   //string out="rst.txt";
   //string cin="cellInput.txt";
   string cin="MultiCells.txt";
-  string win="MultiWorms.txt";
+  //string win="MultiWorms.txt";
+  string win="particles.txt";
   //string cin="circle.txt";
   //string cin="sphere.txt";
   //string cin="chain.txt";
@@ -40,6 +41,7 @@ int main(int argc, char *argv[])
   string cellVelocity="cellVelocity.txt";
   string wormout="chainRst.txt";
   string wormForce="chainForce.txt";
+  string wormVelocity="chainVelocity.txt";
   string fluidout="fluidRst.txt";
   string fluidForce="fluidForce.txt";
   string log="Log.txt";
@@ -68,9 +70,11 @@ int main(int argc, char *argv[])
 
   IBM cellInChanl(&channel,&rbc);
   IBM wormInChanl(&channel,&worm);
-  
-  int nSave =50000;
-  int nts =2500001;//100000;
+ 
+  //worm.initLJ();
+
+  int nSave =5000;//100000;//5000;
+  int nts =250001;//5000001;//250001;//5000001;//250001;//100000;
   //a.init();
   
   //a.printInfor();// this one should come after init();
@@ -86,11 +90,8 @@ int main(int argc, char *argv[])
     channel.applyBC();
 
   }
-     // channel.writeVelocity(fluidout);
-  clock_t begin = clock();
-  //cellInChanl.output(cellout); 
-  
-  for (int i=0;i<nts;i++){
+/*
+  for (int i=0;i<100000;i++){
     //---compute fluid velocity and interpret velocity---//
     //channel.computeVelocity();
     cellInChanl.interpret();
@@ -122,6 +123,46 @@ int main(int argc, char *argv[])
     //---update position at a full time step---//
     rbc.update();
     worm.update();
+    worm.thermalFluctuation();
+  }*/
+  
+     // channel.writeVelocity(fluidout);
+  clock_t begin = clock();
+  //cellInChanl.output(cellout); 
+  
+  for (int i=0;i<nts;i++){
+    //---compute fluid velocity and interpret velocity---//
+    //channel.computeVelocity();
+    cellInChanl.interpret();
+    wormInChanl.interpret();
+    //---update temporary position at half time step---//
+    rbc.updateHalf();
+    worm.updateHalf();
+    //---compute solid force based on temporary position---// 
+    rbc.computeForce();
+    worm.computeForce();
+    //---spread and apply to fluid---// 
+    cellInChanl.spread();
+    channel.applyForce();//spread will overwrite plb->force=0
+
+    wormInChanl.spread();
+    channel.applyForce();
+    //rbc.computeReference();
+    //rbc.computeRigidForce();
+    
+    //---LB fluid solver---// 
+    channel.collide();
+    channel.stream();
+    channel.applyBC();
+    
+    //---compute fluid velocity and interpret velocity after force spreading---//
+    //channel.computeVelocity();
+    cellInChanl.interpret();
+    wormInChanl.interpret();
+    //---update position at a full time step---//
+    rbc.update();
+    worm.update();
+    worm.thermalFluctuation();
     
     if (i%nSave ==0 ){
       channel.writeVelocity(fluidout);
@@ -131,6 +172,7 @@ int main(int argc, char *argv[])
       rbc.writeVelocity(cellVelocity);
       worm.writeGeometry(wormout);
       worm.writeForce(wormForce);
+      worm.writeVelocity(wormVelocity);
       cout<<"time step "<<i<<" finsished"<<endl;
       //cout<<"area "<<rbc.computeArea()/rbc.A0<<endl;
       cellInChanl.writeLog(log,i);

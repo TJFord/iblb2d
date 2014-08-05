@@ -151,11 +151,13 @@ void IBM::interpret(){
       ph2(r2);
       for (int iy=0;iy<4;iy++){
         for (int ix=0;ix<4;ix++){
+          //nfID = plb->xy2idx[((i2-1+iy + ly)%ly)*lx+(i1-1+ix + lx)%lx];
           nfID = plb->xy2idx[(i2-1+iy)*lx+i1-1+ix];
           //nfID = plb->xy2idx[(i2-2+iy)*lx+i1-2+ix];
          // nfID = plb->xy2idx[(i2+iy)*lx+i1+ix];
           if (nfID > plb->nf) 
-            std::cout<<"nfID "<<nfID<<" nt"<<plb->nt<<std::endl;
+            nfID = plb->xy2idx[((i2-1+iy + ly)%ly)*lx+(i1-1+ix + lx)%lx];
+            //std::cout<<"nfID "<<nfID<<" nt"<<plb->nt<<std::endl;
           //plb->computeMacros(nfID,&rho, &ux,&uy);
           pCell->v[2*j] += w1[ix]*w2[iy]*plb->v[2*nfID];
           pCell->v[2*j+1] += w1[ix]*w2[iy]*plb->v[2*nfID+1];
@@ -229,12 +231,14 @@ void IBM::spread(){
       }*/
       for (int iy=0;iy<4;iy++){
         for (int ix=0;ix<4;ix++){
+          //nfID = plb->xy2idx[((i2-1+iy + ly)%ly)*lx+(i1-1+ix + lx)%lx];
           nfID = plb->xy2idx[(i2-1+iy)*lx+i1-1+ix];
           //nfID = plb->xy2idx[(i2-2+iy)*lx+i1-2+ix];
           //nfID = plb->xy2idx[(i2+iy)*lx+i1+ix];
-          if (nfID>plb->nt){ 
-            std::cout<<"error! spread to node out of fluid domain"<<std::endl;
-            std::cout<<"node id "<<nfID<<"at x="<<i1-2+ix<<" y="<<i2-2+iy<<std::endl;
+          if (nfID>plb->nf){ 
+            nfID = plb->xy2idx[((i2-1+iy + ly)%ly)*lx+(i1-1+ix + lx)%lx];
+            //std::cout<<"error! spread to node out of fluid domain"<<std::endl;
+            //std::cout<<"node id "<<nfID<<"at x="<<i1-2+ix<<" y="<<i2-2+iy<<std::endl;
           }
          // plb->computeMacros(nfID,&rho, &ux,&uy);
           //pCell->computeForce();

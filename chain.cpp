@@ -235,6 +235,9 @@ void Chain::update(){
       if (x[2*i+1] < 0.) x[2*i+1] += ly;
       if (x[2*i+1] >= ly) x[2*i+1] -= ly;
     }
+    //bounceback at top bottom wall
+    if (x[2*i+1]>ly) x[2*i+1] = 2*ly-x[2*i+1];
+    if (x[2*i+1]<0) x[2*i+1] = -x[2*i+1];
   }
   /*
   int tmp;
@@ -456,15 +459,19 @@ void Chain::computeForce(){
     force[2*i]=0.;
     force[2*i+1]=0.;
   }
-  if (nb)
+  if (nb){
     bondHarmonicForce();
-  if (na)
+    //std::cout<<"chain bond force"<<std::endl;
+  }
+  if (na){
     angleBendForce();
+    //std::cout<<"chain angle force"<<std::endl;
+  }
   if (rCut){
     buildLinkList();
     pairWiseInteraction();
+    //std::cout<<"chain LJ force"<<std::endl;
   }
-
   //std::cout<<"ks"<<ks<<std::endl;
   //for (int i=0;i<nn;i++)
   //  std::cout<<i<<" force "<<force[2*i]<<" "<<force[2*i+1]<<std::endl; 
@@ -548,7 +555,7 @@ void Chain::initLJ(){
   std::cout<<"cx,cy "<<cx<<" "<<cy<<std::endl;
   lscl=new int[nn];
   head=new int[cx*cy];
-
+  //std::cout<<"lscl,head size"<<nn<<" "<<cx*cy<<std::endl;
   rrCut=rCut*rCut;
   sig2=sigma*sigma;
   sig6=sig2*sig2*sig2;
@@ -560,14 +567,19 @@ void Chain::buildLinkList(){
   double dx,dy;
   dx = lx/cx;
   dy = ly/cy;
+  if (dx<1 || dy < 1) std::cout<<"error, the cut off distance is too small"<<std::endl;
+ // std::cout<<"lx,ly,cx,cy "<<lx<<" "<<ly<<" "<<cx<<" "<<cy<<std::endl;
   for (int i=0;i<cellSize;i++)
     head[i]=EMPTY;
+  
   for (int i=0;i<nn;i++){
     idx = floor(x[2*i]/dx);
     idy = floor(x[2*i+1]/dy);
     idc = idy*cx + idx;
+    //std::cout<<"dx,dy, i,idc "<<dx<<" "<<dy<<" "<<i<<" "<<idc<<std::endl;
     lscl[i]=head[idc];
     head[idc]=i;
+    if (idc >cx*cy) std::cout<<"idc "<<idc<<" "<<cx*cy<<std::endl;
   }
 }
 

@@ -3,6 +3,7 @@
 //#include <random>
 #include "random_mars.h"
 
+#include <ctime>
 using namespace std;
 /*
 struct A{
@@ -83,13 +84,36 @@ int main()
     std::cout<<std::string(p[i]*nstars/nrolls,'*')<<std::endl;
   }
 */
-  for (int i=0;i<5;i++)
+  /*for (int i=0;i<5;i++)
     for (int j=0;j<5;j++){
       if (i==0 || i==4) {
         if (j==1 || j==2) continue;
       }
       std::cout<<"i,j="<<i<<" "<<j<<std::endl;
+    }*/
+  clock_t begin=clock();
+  for (int k=0;k<1000000;k++){
+    for (int i=-1;i<100;i++){
+      int j=(i+100)%100;
     }
+  }
+  clock_t end=clock();
+  double elapsedSecs = double(end-begin)/CLOCKS_PER_SEC;
+  cout<<"mod time elapsed "<<elapsedSecs<<endl;
+  
+  begin=clock();
+  for (int k=0;k<1000000;k++){
+    for (int i=-1;i<100;i++){
+      int j=i;
+      if (j==-1) j += 100;
+      //if (j==101) j -= 100;
+    }
+  }
+  end=clock();
+  elapsedSecs = double(end-begin)/CLOCKS_PER_SEC;
+  
+  cout<<"if time elapsed "<<elapsedSecs<<endl;
+
   /*
   int a=3;
   double c=3.0;
