@@ -15,6 +15,7 @@ Cell::Cell(){
   force=NULL;
   pBond=NULL;
   pAngle=NULL;
+  edgeFlag=NULL;
  
   rho=0.;
   m=0.;
@@ -37,6 +38,7 @@ Cell& Cell::operator=(const Cell& rhs){
     delete [] force;
     delete pBond;
     delete pAngle;
+    delete edgeFlag;
     
     nn=rhs.nn; nb=rhs.nb; na=rhs.na;
     ns=rhs.ns;
@@ -63,10 +65,12 @@ Cell& Cell::operator=(const Cell& rhs){
     }
     xc=new double[ns*2];
     A0=new double[ns];
+    edgeFlag= new int[ns];
     for (int i=0;i<ns;i++){
       xc[2*i]=rhs.xc[2*i];
       xc[2*i+1]=rhs.xc[2*i+1];
       A0[i]=rhs.A0[i];
+      edgeFlag[i]=0;
     }
     int size;
     pBond = new Bond;
@@ -106,12 +110,17 @@ void Cell::readInput(const std::string filename){
         in>>kb;
       }else if(str.compare("kp")==0){
         in>>kp;
+      }else if(str.compare("lx")==0){
+        in>>lx;
+      }else if(str.compare("ly")==0){
+        in>>ly;
       }else if(str.compare("periodic")==0){
         in>>periodicX>>periodicY;
       }else if(str.compare("ns")==0){
         in>>ns;
         xc=new double[ns*2];
         A0=new double[ns];
+        edgeFlag = new int[ns];
       }else if(str.compare("node")==0){
         in>>nn;
         x=new double[nn*2];
@@ -155,6 +164,17 @@ Cell::~Cell(){
   delete [] force;
   delete pBond;
   delete pAngle;
+  delete edgeFlag;
+}
+
+void Cell::reReadPosition(const std::string filename){
+  std::ifstream in(filename.c_str(),std::ios::in);
+  if (in.is_open()){
+    for (int i=0;i<nn;i++)
+      in>>x[2*i]>>x[2*i+1];
+  }else{
+    std::cout<<"cannot reread cell position"<<std::endl;
+  }
 }
 
 void Cell::init(){
@@ -167,6 +187,7 @@ void Cell::init(){
   }
   for (int i=0;i<ns;i++){
     A0[i] = computeArea(i);
+    edgeFlag[i]=0;
   }
   nForOne=nn/ns;
   /*int tmp;
@@ -297,7 +318,7 @@ void Cell::computeEquilibrium(){
 
 void Cell::bondHarmonicForce(){
   //--calculate bond force with F = ks*(r-r0)---//
-  double dx,dy,rsq,r,fv,dr;
+  double dx,dy,rsq,r,fv,dr,ratio;
   int i1,i2;
   double halfX, halfY;
   halfX=0.5*lx;
@@ -333,10 +354,12 @@ void Cell::bondHarmonicForce(){
     r=sqrt(rsq);
     //std::cout<<"i "<<i<<" r "<<r<<" L0 "<<pBond->L0[i]<<std::endl;
     dr = r-(pBond->L0[i]);
+    ratio = r/(pBond->L0[i]);
     
-    if (r>0.0)
-      fv = -ks*dr/r;
-    else
+    if (r>0.0){
+      //fv = -ks*dr/r;
+      fv = -ks*exp(2*fabs(ratio-1))*dr/r;
+    }else
       fv = 0.0;
 
     force[2*i1] += fv*dx;
@@ -435,6 +458,7 @@ double Cell::computeArea(int idx){
   nbForOne = nb/ns;
   bst = idx*nbForOne;
   bnd = idx*nbForOne + nbForOne;
+  int flag=0;
   for (int i=bst;i<bnd;i++){
     i1=pBond->first[i];
     i2=pBond->next[i];
@@ -442,23 +466,37 @@ double Cell::computeArea(int idx){
     dy=x[2*i1+1]-x[2*i2+1];
     if (periodicX){
       if (std::abs(dx)>halfX){
-        if (dx > 0.)   
+        //return A0[idx];
+        flag = 1;
+        edgeFlag[idx]=flag;
+        //std::cout<<"perodico "<<idx<<std::endl;
+        break;
+        if (dx > 0.){   
           dx=x[2*i1]-x[2*i2]-lx;
-        else
+        }else{
           dx=x[2*i1]-x[2*i2]+lx;
+        }
       }
     }
     if (periodicY){
       if (std::abs(dy)>halfY){
+        //return A0[idx];
+        flag=1;
+        edgeFlag[idx]=flag;
+        break;
         if (dy > 0.)   
           dy=x[2*i1+1]-x[2*i2+1]-ly;
-        else
+        else{
           dy=x[2*i1+1]-x[2*i2+1]+ly;
+        }
       }
     }
     area += x[2*i1]*dy - x[2*i1+1]*dx;
   }
-  return 0.5*sqrt(area*area);  
+  if (flag)
+    return A0[idx];
+  else
+    return 0.5*sqrt(area*area);  
 }
 
 void Cell::areaConservationForce(){
@@ -513,6 +551,9 @@ void Cell::computeForce(){
   for (int i=0;i<nn;i++){
     force[2*i]=0.;
     force[2*i+1]=0.;
+  }
+  for (int i=0;i<ns;i++){
+    edgeFlag[i]=0;
   }
   bondHarmonicForce();
   angleBendForce();

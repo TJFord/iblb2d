@@ -66,6 +66,7 @@ int main(int argc, char *argv[])
   worm.nondimension(*channel.pUnits);
   //rbc.output(out);
   worm.writeLog(log);
+  worm.setCells(&rbc);
   
 
   IBM cellInChanl(&channel,&rbc);
@@ -73,8 +74,8 @@ int main(int argc, char *argv[])
  
   //worm.initLJ();
 
-  int nSave =500000;//5000;//100000;
-  int nts =25000001;//250001;//5000001;
+  int nSave =250000;//100000;//5000;
+  int nts =12500001;//5000001;//250001;
   //a.init();
   
   //a.printInfor();// this one should come after init();
@@ -132,6 +133,7 @@ int main(int argc, char *argv[])
   
   for (int i=0;i<nts;i++){
     //---compute fluid velocity and interpret velocity---//
+    //channel.computeVelocity();
     cellInChanl.interpret();
     wormInChanl.interpret();
     //---update temporary position at half time step---//
@@ -159,9 +161,9 @@ int main(int argc, char *argv[])
     cellInChanl.interpret();
     wormInChanl.interpret();
     //---update position at a full time step---//
-    rbc.update();
     worm.update();
     worm.thermalFluctuation();
+    rbc.update();//rbc update after thermal edgeFlag
     
     if (i%nSave ==0 ){
       channel.writeVelocity(fluidout);
@@ -174,6 +176,10 @@ int main(int argc, char *argv[])
       worm.writeVelocity(wormVelocity);
       cout<<"time step "<<i<<" finsished"<<endl;
       //cout<<"area "<<rbc.computeArea()/rbc.A0<<endl;
+      //cout<<"edgeFlag ";
+      //for(int j=0;j<rbc.ns;j++)
+      //  cout<<" "<<rbc.edgeFlag[j];
+      //cout<<endl;
       cellInChanl.writeLog(log,i);
     }
   }
@@ -181,5 +187,6 @@ int main(int argc, char *argv[])
   double elapsedSecs = double(end-begin)/CLOCKS_PER_SEC;
   cout<<"time elapsed "<<elapsedSecs<<endl;
   cellInChanl.writeLog(log,int(elapsedSecs));
+
   return 0;
 }

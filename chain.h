@@ -4,6 +4,7 @@
 # include "random_mars.h"
 # include "units.h"
 # include "solid.h"
+# include "cell.h"
 
 #define EMPTY -1
 /*
@@ -92,6 +93,8 @@ public:
 
 class Chain: public Solid{
 public:
+  //Solid *pCell;
+  Cell *pCell;
   //double *x;
   double *xtmp;
   //double *v;
@@ -106,7 +109,8 @@ public:
   double ks;
   double kb;
   double kp;
-
+  double kBT; //thermal energy
+  double damp;// Brownian dynamics dampping,in time units, 100 
   double m;
   double g;
 
@@ -140,7 +144,9 @@ public:
   ~Chain();
   Chain& operator=(const Chain& rhs);
   void readInput(const std::string filename);
+  void reReadPosition(const std::string filename);
   void init();
+  void setCells(Cell * pCell_);
   // manipulator
   void update();
   void updateHalf();
@@ -156,6 +162,8 @@ public:
   void buildLinkList();
   void pairWiseInteraction();
   void LJForce(int i,int j);
+  int particleInsideCell(double xp, double yp, int idx);
+  void moveOutside(double xp, double yp, int idc, int idp);
   // acessor
   void writeGeometry(const std::string filename);
   void writeForce(const std::string filename);

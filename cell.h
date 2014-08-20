@@ -110,16 +110,18 @@ public:
 
   //int nn, nb, na;
   int nb, na;
-  int ns;//# of cells
+  //int ns;// already defined in solid
   int nForOne;// # of nodes for each solid object
   
   int periodicX, periodicY;
+  int *edgeFlag;
 public:
   // creator
   Cell();
   ~Cell();
   Cell& operator=(const Cell& rhs);
   void readInput(const std::string filename);
+  void reReadPosition(const std::string filename);
   void init();
   // manipulator
   void update();

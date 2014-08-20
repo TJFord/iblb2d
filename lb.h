@@ -67,7 +67,8 @@ public:
   LB();
   ~LB();
   LB& operator=(const LB& rhs);
-  void readInput(const std::string filename); //only read nn, nlist, etc.
+  void readInput(const std::string filename); 
+  void reReadVelocity(const std::string filename); //restart.
   // manipulator
   void init();//initialize density with 0 velocity
   void stream();

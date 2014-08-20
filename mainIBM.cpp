@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
       rbc.writeForce(cellForce);
       rbc.writeVelocity(cellVelocity);
       cout<<"time step "<<i<<" finsished"<<endl;
-      cout<<"area "<<rbc.computeArea()/rbc.A0<<endl;
+      cout<<"area "<<rbc.computeArea(0)/rbc.A0[0]<<endl;
       cellInChanl.writeLog(log,i);
     }
   }

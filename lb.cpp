@@ -334,6 +334,27 @@ void LB::readInput(const std::string filename)
     }
 }
 
+void LB::reReadVelocity(const std::string filename)
+{
+  using namespace std;
+  ifstream in(filename.c_str(),ios::in);
+  int st;
+  double uSqr;// = ux*ux + uy*uy;
+  if (in.is_open()){
+    for (int i=0;i<nf;i++){
+      in>>v[2*i]>>v[2*i+1];//read velocity
+      uSqr = v[2*i]*v[2*i]+v[2*i+1]*v[2*i+1];
+      st = i*q;
+      for (int j=0; j<q; j++){
+        f[st+j] = computeEquilibrium(j, 1.0, v[2*i], v[2*i+1], uSqr); //initialize with zero velocity 
+        ft[st+j]=f[st+j];
+      }
+    }
+  }else{
+    cout<<"reread velocity file file error"<<endl;
+  }
+}
+ 
 LB::~LB(){
   delete [] xy2idx;
   delete [] nbList;

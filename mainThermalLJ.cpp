@@ -105,8 +105,6 @@ int main(int argc, char *argv[])
     //---compute solid force based on temporary position---// 
     //rbc.computeForce();
     worm.computeForce();
-    //worm.buildLinkList();
-    //worm.pairWiseInteraction();
     //rbc.computeReference();
     //rbc.computeRigidForce();
     

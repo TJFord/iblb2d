@@ -127,6 +127,8 @@ void Chain::readInput(const std::string filename){
         in>>kp;
       }else if(str.compare("ljcut")==0){
         in>>epsilon>>sigma>>rCut;
+      }else if(str.compare("kBT")==0){
+        in>>kBT;
       }else if(str.compare("periodic")==0){
         in>>periodicX>>periodicY;
       }else if(str.compare("ns")==0){
@@ -179,6 +181,16 @@ Chain::~Chain(){
   delete [] head;
 }
 
+void Chain::reReadPosition(const std::string filename){
+  std::ifstream in(filename.c_str(),std::ios::in);
+  if (in.is_open()){
+    for (int i=0;i<nn;i++)
+      in>>x[2*i]>>x[2*i+1];
+  }else{
+    std::cout<<"cannot reread cell position"<<std::endl;
+  }
+}
+
 void Chain::init(){
   for (int i=0;i<nn;i++){
     v[2*i]=0.;
@@ -186,6 +198,7 @@ void Chain::init(){
     //std::cout<<"xhalf "<<xhalf[2*i]<<" "<<xhalf[2*i+1]<<std::endl;
   }
   nForOne=nn/ns;
+  damp=100;
   /*int tmp;
   for (int i=0;i<ns;i++){
     xc[2*i]=0.;
@@ -222,7 +235,6 @@ void Chain::init(){
 }
 
 void Chain::update(){
-  
   for (int i=0;i<nn;i++){
     x[2*i] = xtmp[2*i]+v[2*i];
     x[2*i+1] =xtmp[2*i+1]+v[2*i+1];
@@ -274,15 +286,17 @@ void Chain::nondimension(const Units& unt){
   // is not derived rigorously based on derivative
   // thus, the force is simplified as F= kp*dA;
   kp *= unt.dt*unt.dt*unt.dx/unt.dm;
+  kBT *= unt.dt*unt.dt/unt.dm/unt.dx/unt.dx;
   m /= unt.dm;
   g *= unt.dt*unt.dt/unt.dx;
   diffusionCoef *= unt.dt/unt.dx/unt.dx;
-  diffDist = 2*diffusionCoef;
+  diffDist = sqrt(2*diffusionCoef);
   rCut /= unt.dx;
   sigma /= unt.dx;
   epsilon *= unt.dt*unt.dt/unt.dm/unt.dx/unt.dx;
   std::cout<<"rCut,sigma "<<rCut<<" "<<sigma<<std::endl;
   std::cout<<"diffDist"<<diffDist<<std::endl;
+  std::cout<<"kBT "<<kBT<<" m "<<m<<std::endl;
   std::cout<<"ks, kb, kp "<<ks<<" "<<kb<<" "<<kp<<std::endl;
 }
 
@@ -470,7 +484,7 @@ void Chain::computeForce(){
   if (rCut){
     buildLinkList();
     pairWiseInteraction();
-    //std::cout<<"chain LJ force"<<std::endl;
+    std::cout<<"chain LJ force"<<std::endl;
   }
   //std::cout<<"ks"<<ks<<std::endl;
   //for (int i=0;i<nn;i++)
@@ -526,6 +540,29 @@ void Chain::output(const std::string filename){
 }
 */
 
+void Chain::setCells(Cell* pCell_){
+  pCell = pCell_;
+}
+
+int Chain::particleInsideCell(double xp, double yp, int idc){
+  int i,j,c=0;
+  int nForOne = pCell->nn/pCell->ns;
+  double xci, yci, xcj,ycj;
+  if (pCell->edgeFlag[idc]){
+    //std::cout<<"cell "<<idc<<" edge "<<pCell->edgeFlag[idc]<<std::endl;
+    return 0;
+  }else{
+    for (i=0,j=nForOne-1;i<nForOne; j=i++){
+      xci=pCell->x[2*(idc*nForOne+i)];
+      yci=pCell->x[2*(idc*nForOne+i)+1];
+      xcj=pCell->x[2*(idc*nForOne+j)];
+      ycj=pCell->x[2*(idc*nForOne+j)+1];
+      if (((yci>yp)!=(ycj>yp)) && (xp<(xcj-xci)*(yp-yci)/(ycj-yci)+xci))
+        c = !c;
+    }
+    return c;
+  }
+}
 
 void Chain::moveTo(double x, double y){
 /*  computeReference();
@@ -537,14 +574,69 @@ void Chain::moveTo(double x, double y){
   }*/
 }
 
+void Chain::moveOutside(double xp, double yp, int idc, int idp){
+  double dx,dy,r;
+  double dxMin,dyMin,rMin;//vector
+  rMin = 1000000.;//just a big number
+  dxMin=0.;
+  dyMin=0.;
+  int nForOne = pCell->nn/pCell->ns;
+  for (int i=0;i<nForOne;i++){
+    dx = pCell->x[2*(idc*nForOne+i)]-xp;
+    dy = pCell->x[2*(idc*nForOne+i)+1]-yp;
+    r = dx*dx + dy*dy;
+    if (r < rMin){
+      rMin = r;
+      dxMin = dx;
+      dyMin = dy;
+    }
+  }
+  x[2*idp] += dxMin ;
+  x[2*idp+1] += dyMin;
+}
+
 void Chain::thermalFluctuation(){
   double dx, dy;
+  //double xorg,yorg;
+  int inside=0;
   for (int i=0;i<nn;i++){
     dx = diffDist*random->gaussian();
     dy = diffDist*random->gaussian();
+    //xorg = x[2*i];
+    //yorg = x[2*i+1];
     x[2*i] += dx;
     x[2*i+1] += dy;
+    for (int idc=0;idc<pCell->ns;idc++){
+      inside = particleInsideCell(x[2*i],x[2*i+1],idc);
+      if (inside){
+        //std::cout<<"inside cell "<<idc<<" particle "<<i<<std::endl;
+        x[2*i] -= 2*dx;
+        x[2*i+1] -= 2*dy;
+        //x[2*i] = xorg;
+        //x[2*i+1] = yorg;
+        break;
+      }
+    }
   }
+  /* 
+  for (int i=0;i<nn;i++){
+    for (int idc=0;idc<pCell->ns;idc++){
+      inside = particleInsideCell(x[2*i],x[2*i+1],idc);
+      if (inside){
+        //std::cout<<"cell "<<idc<<" particle  "<<i<<std::endl;
+        moveOutside(x[2*i],x[2*i+1],idc,i);
+        break;
+      }
+    }
+  }*/
+  /*double fx, fy, factor;
+  factor = sqrt(kBT*m/damp);//dt=1
+  for (int i=0;i<nn;i++){
+    fx = factor*(random->uniform()-0.5);
+    fy = factor*(random->uniform()-0.5);
+    force[2*i] += fx;
+    force[2*i+1] += fy;
+  }*/
 }
 
 void Chain::initLJ(){
@@ -565,10 +657,11 @@ void Chain::buildLinkList(){
   int cellSize=cx*cy;
   int idx,idy,idc;
   double dx,dy;
-  dx = lx/cx;
-  dy = ly/cy;
-  if (dx<1 || dy < 1) std::cout<<"error, the cut off distance is too small"<<std::endl;
- // std::cout<<"lx,ly,cx,cy "<<lx<<" "<<ly<<" "<<cx<<" "<<cy<<std::endl;
+  //std::cout<<"lx,ly,cx,cy "<<lx<<" "<<ly<<" "<<cx<<" "<<cy<<std::endl;
+  dx = double(lx/cx);
+  dy = double(ly/cy);
+  //if (dx<1 || dy < 1) std::cout<<"error, the cut off distance is too small"<<std::endl;
+  //std::cout<<"lx,ly,cx,cy "<<lx<<" "<<ly<<" "<<cx<<" "<<cy<<std::endl;
   for (int i=0;i<cellSize;i++)
     head[i]=EMPTY;
   

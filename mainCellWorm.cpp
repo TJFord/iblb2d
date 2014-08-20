@@ -66,6 +66,7 @@ int main(int argc, char *argv[])
   worm.nondimension(*channel.pUnits);
   //rbc.output(out);
   worm.writeLog(log);
+  worm.setCells(&rbc);
   
 
   IBM cellInChanl(&channel,&rbc);
@@ -73,8 +74,8 @@ int main(int argc, char *argv[])
  
   //worm.initLJ();
 
-  int nSave =5000;//100000;//5000;
-  int nts =250001;//5000001;//250001;//5000001;//250001;//100000;
+  int nSave =25000;//250000;//100000;//5000;
+  int nts =1250001;//12500001;//5000001;//250001;//5000001;//250001;//100000;
   //a.init();
   
   //a.printInfor();// this one should come after init();
@@ -140,13 +141,13 @@ int main(int argc, char *argv[])
     worm.updateHalf();
     //---compute solid force based on temporary position---// 
     rbc.computeForce();
-    worm.computeForce();
+    //worm.computeForce();
     //---spread and apply to fluid---// 
     cellInChanl.spread();
     channel.applyForce();//spread will overwrite plb->force=0
 
-    wormInChanl.spread();
-    channel.applyForce();
+    //wormInChanl.spread();
+    //channel.applyForce();
     //rbc.computeReference();
     //rbc.computeRigidForce();
     
@@ -175,12 +176,17 @@ int main(int argc, char *argv[])
       worm.writeVelocity(wormVelocity);
       cout<<"time step "<<i<<" finsished"<<endl;
       //cout<<"area "<<rbc.computeArea()/rbc.A0<<endl;
+      cout<<"edgeFlag ";
+      for(int j=0;j<rbc.ns;j++)
+        cout<<" "<<rbc.edgeFlag[j];
+      cout<<endl;
       cellInChanl.writeLog(log,i);
     }
   }
   clock_t end = clock();
   double elapsedSecs = double(end-begin)/CLOCKS_PER_SEC;
   cout<<"time elapsed "<<elapsedSecs<<endl;
+  cellInChanl.writeLog(log,int(elapsedSecs));
 
   return 0;
 }
