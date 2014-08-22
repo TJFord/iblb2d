@@ -27,6 +27,8 @@ Chain::Chain(){
   g=9.8;
   diffusionCoef=0;
   diffDist=0.;
+  zeta=0.;
+  seed=273571;
 
   periodicX=0;
   periodicY=0;
@@ -55,6 +57,7 @@ Chain& Chain::operator=(const Chain& rhs){
     lx=rhs.lx; ly=rhs.ly;
     diffusionCoef=rhs.diffusionCoef;
     diffDist=rhs.diffDist;
+    zeta=rhs.zeta;
     
     rCut=rhs.rCut;
     cx=rhs.cx;
@@ -117,6 +120,8 @@ void Chain::readInput(const std::string filename){
       //in>>str;
       if(str.compare("m")==0){
         in>>m;
+      }else if(str.compare("diameter")==0){
+        in>>diameter;
       }else if(str.compare("diffusion")==0){
         in>>diffusionCoef;
       }else if(str.compare("ks")==0){
@@ -128,7 +133,7 @@ void Chain::readInput(const std::string filename){
       }else if(str.compare("ljcut")==0){
         in>>epsilon>>sigma>>rCut;
       }else if(str.compare("kBT")==0){
-        in>>kBT;
+        in>>kBT>>seed;
       }else if(str.compare("periodic")==0){
         in>>periodicX>>periodicY;
       }else if(str.compare("ns")==0){
@@ -198,7 +203,7 @@ void Chain::init(){
     //std::cout<<"xhalf "<<xhalf[2*i]<<" "<<xhalf[2*i+1]<<std::endl;
   }
   nForOne=nn/ns;
-  damp=100;
+  zeta = kBT/diffusionCoef;
   /*int tmp;
   for (int i=0;i<ns;i++){
     xc[2*i]=0.;
@@ -231,11 +236,14 @@ void Chain::init(){
     //  x[2*i+1] += 1;
   }*/
   //computeEquilibrium();
-  random = new RanMars(12379);
+  random = new RanMars(seed);
 }
 
 void Chain::update(){
   for (int i=0;i<nn;i++){
+    v[2*i] += force[2*i]/zeta;
+    v[2*i+1] += force[2*i+1]/zeta;
+
     x[2*i] = xtmp[2*i]+v[2*i];
     x[2*i+1] =xtmp[2*i+1]+v[2*i+1];
 
@@ -288,14 +296,17 @@ void Chain::nondimension(const Units& unt){
   kp *= unt.dt*unt.dt*unt.dx/unt.dm;
   kBT *= unt.dt*unt.dt/unt.dm/unt.dx/unt.dx;
   m /= unt.dm;
+  diameter /= unt.dx;
   g *= unt.dt*unt.dt/unt.dx;
   diffusionCoef *= unt.dt/unt.dx/unt.dx;
   diffDist = sqrt(2*diffusionCoef);
+  zeta *= unt.dt/unt.dm;
   rCut /= unt.dx;
   sigma /= unt.dx;
   epsilon *= unt.dt*unt.dt/unt.dm/unt.dx/unt.dx;
   std::cout<<"rCut,sigma "<<rCut<<" "<<sigma<<std::endl;
   std::cout<<"diffDist"<<diffDist<<std::endl;
+  std::cout<<"friction Coef"<<zeta<<std::endl;
   std::cout<<"kBT "<<kBT<<" m "<<m<<std::endl;
   std::cout<<"ks, kb, kp "<<ks<<" "<<kb<<" "<<kp<<std::endl;
 }
@@ -484,8 +495,8 @@ void Chain::computeForce(){
   if (rCut){
     buildLinkList();
     pairWiseInteraction();
-    std::cout<<"chain LJ force"<<std::endl;
   }
+  randomForce();
   //std::cout<<"ks"<<ks<<std::endl;
   //for (int i=0;i<nn;i++)
   //  std::cout<<i<<" force "<<force[2*i]<<" "<<force[2*i+1]<<std::endl; 
@@ -591,11 +602,22 @@ void Chain::moveOutside(double xp, double yp, int idc, int idp){
       dyMin = dy;
     }
   }
-  x[2*idp] += dxMin ;
-  x[2*idp+1] += dyMin;
+  x[2*idp] += 1.05*dxMin ;
+  x[2*idp+1] += 1.05*dyMin;
 }
 
-void Chain::thermalFluctuation(){
+void Chain::randomForce(){
+  double fx, fy, factor;
+  factor = sqrt(24.0*kBT*zeta);//dt=1
+  for (int i=0;i<nn;i++){
+    fx = factor*(random->uniform()-0.5);
+    fy = factor*(random->uniform()-0.5);
+    force[2*i] += fx;
+    force[2*i+1] += fy;
+  }
+}
+
+void Chain::randomDisplacement(){
   double dx, dy;
   //double xorg,yorg;
   int inside=0;
@@ -637,6 +659,20 @@ void Chain::thermalFluctuation(){
     force[2*i] += fx;
     force[2*i+1] += fy;
   }*/
+}
+
+void Chain::penetrationRemoval(){
+  int inside=0;
+  for (int i=0;i<nn;i++){
+    for (int idc=0;idc<pCell->ns;idc++){
+      inside = particleInsideCell(x[2*i],x[2*i+1],idc);
+      if (inside){
+        //std::cout<<"cell "<<idc<<" particle  "<<i<<std::endl;
+        moveOutside(x[2*i],x[2*i+1],idc,i);
+        break;
+      }
+    }
+  } 
 }
 
 void Chain::initLJ(){
@@ -736,6 +772,8 @@ void Chain::pairWiseInteraction(){
 void Chain::LJForce(int i,int j){
   double dx,dy,rsq,ri2,ri6,fcVal;
   double halfX, halfY;
+  double d2;
+  d2 = diameter*diameter;
   halfX = 0.5*lx;
   halfY = 0.5*ly;
   dx = x[2*i]-x[2*j];
@@ -760,6 +798,7 @@ void Chain::LJForce(int i,int j){
   //std::cout<<"i,j"<<i<<" "<<j<<" "<<rsq<<std::endl;
   // periodic conditions not considered yet 
   if (rsq < rrCut){
+    if (rsq < d2) rsq = d2;
     ri2=1.0/rsq;ri6=ri2*ri2*ri2;
     //r=sqrt(rsq);
     fcVal=48.0*epsilon*ri2*ri6*sig6*(sig6*ri6-0.5);

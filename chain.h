@@ -110,9 +110,10 @@ public:
   double kb;
   double kp;
   double kBT; //thermal energy
-  double damp;// Brownian dynamics dampping,in time units, 100 
+  //double damp;// Brownian dynamics dampping,in time units, 100 
   double m;
   double g;
+  double diameter;
 
   //double xc[2];
 
@@ -129,6 +130,7 @@ public:
   //std::normal_distribution<double> ndist;
   //portable random file from lammps
   RanMars *random;
+  int seed;
 
   //linked list cells for pairwise potential
   int *lscl;//list of cell link
@@ -137,6 +139,7 @@ public:
   double sig2,sig6;
   int cx,cy;//cell number in x,y direction
   double epsilon, sigma;
+  double zeta;//friction coefficient
 
 public:
   // creator
@@ -157,7 +160,9 @@ public:
   void angleBendForce();
   void velocityVerletIntegration();
   void moveTo(double x,double y);
-  void thermalFluctuation();
+  void randomForce();
+  void randomDisplacement();
+  void penetrationRemoval();
   void initLJ();
   void buildLinkList();
   void pairWiseInteraction();
