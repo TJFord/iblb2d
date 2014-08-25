@@ -38,7 +38,7 @@ Cell& Cell::operator=(const Cell& rhs){
     delete [] force;
     delete pBond;
     delete pAngle;
-    delete edgeFlag;
+    delete [] edgeFlag;
     
     nn=rhs.nn; nb=rhs.nb; na=rhs.na;
     ns=rhs.ns;
@@ -164,7 +164,7 @@ Cell::~Cell(){
   delete [] force;
   delete pBond;
   delete pAngle;
-  delete edgeFlag;
+  delete [] edgeFlag;
 }
 
 void Cell::reReadPosition(const std::string filename){

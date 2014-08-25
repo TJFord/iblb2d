@@ -208,7 +208,9 @@ void LB::readInput(const std::string filename)
         else if (str.compare("ly") == 0)
         { in >> ly;}
         else if(str.compare("nf")==0){
-        in>>nf;
+          in>>nf;
+          force = new double[nf*d];
+          v = new double[nf*d];
         }else if(str.compare("nt")==0){
           in>>nt;f=new double[nt*q];
           ft=new double[nt*q];
@@ -218,8 +220,8 @@ void LB::readInput(const std::string filename)
         else if (str.compare("nbList") == 0){
           nbList = new int[nf*(q-1)];
           coor = new int[nf*d];
-          force = new double[nf*d];
-          v = new double[nf*d];
+          //force = new double[nf*d];
+          //v = new double[nf*d];
           int nadj = q - 1;
           for (int i = 0; i < nf; i++){
             in >> tmp;//current node number

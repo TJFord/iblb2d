@@ -135,11 +135,16 @@ public:
   //linked list cells for pairwise potential
   int *lscl;//list of cell link
   int *head; //head for each cell
+  // for particle - cell interaction
+  int *lscl_c;
+  int *head_c;
   double rCut,rrCut;//cut of distance and its square
   double sig2,sig6;
   int cx,cy;//cell number in x,y direction
   double epsilon, sigma;
   double zeta;//friction coefficient
+  double randForce;//random force magnitude
+  double *drag;
 
 public:
   // creator
@@ -166,7 +171,9 @@ public:
   void initLJ();
   void buildLinkList();
   void pairWiseInteraction();
+  //void cellParticleInteraction();
   void LJForce(int i,int j);
+  void particleCellLJForce(int i,int j);
   int particleInsideCell(double xp, double yp, int idx);
   void moveOutside(double xp, double yp, int idc, int idp);
   // acessor

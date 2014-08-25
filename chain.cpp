@@ -15,9 +15,12 @@ Chain::Chain(){
   pBond=NULL;
   pAngle=NULL;
   random=NULL;
+  drag=NULL;
 
   lscl=NULL;
   head=NULL;
+  lscl_c=NULL;
+  head_c=NULL;
 
   rho=0.;
   m=0.;
@@ -29,7 +32,8 @@ Chain::Chain(){
   diffDist=0.;
   zeta=0.;
   seed=273571;
-
+  randForce=0.;
+  
   periodicX=0;
   periodicY=0;
 }
@@ -44,9 +48,12 @@ Chain& Chain::operator=(const Chain& rhs){
     delete pBond;
     delete pAngle;
     delete random;
+    delete [] drag;
 
     delete [] lscl;
     delete [] head;
+    delete [] lscl_c;
+    delete [] head_c;
     
     nn=rhs.nn; nb=rhs.nb; na=rhs.na;
     ns=rhs.ns;
@@ -66,13 +73,14 @@ Chain& Chain::operator=(const Chain& rhs){
     periodicX = rhs.periodicX;
     periodicY = rhs.periodicY;
     
-    lscl=new int[nn]; //have to rebuild each time
-    head=new int[cx*cy];
+    //lscl=new int[nn]; //have to rebuild each time
+    //head=new int[cx*cy];
 
     x=new double[nn*2];
     xtmp=new double[nn*2];
     v=new double[nn*2];
     force=new double[nn*2];
+    drag=new double[nn*2];
     for (int i=0;i<nn;i++){
       x[2*i]=rhs.x[2*i];
       x[2*i+1]=rhs.x[2*i+1];
@@ -82,6 +90,8 @@ Chain& Chain::operator=(const Chain& rhs){
       v[2*i+1]=rhs.v[2*i+1];
       force[2*i]=rhs.force[2*i];
       force[2*i+1]=rhs.force[2*i+1];
+      drag[2*i]=rhs.drag[2*i];
+      drag[2*i+1]=rhs.drag[2*i+1];
     }
     xc=new double[ns*2];
     for (int i=0;i<ns;i++){
@@ -145,6 +155,7 @@ void Chain::readInput(const std::string filename){
         xtmp=new double[nn*2];
         v=new double[nn*2];
         force=new double[nn*2];
+        drag = new double[nn*2];
 
         for (int i=0;i<nn;i++)
           in>>x[2*i]>>x[2*i+1];
@@ -184,6 +195,9 @@ Chain::~Chain(){
   delete random;
   delete [] lscl;
   delete [] head;
+  delete [] lscl_c;
+  delete [] head_c;
+  delete [] drag;
 }
 
 void Chain::reReadPosition(const std::string filename){
@@ -200,6 +214,10 @@ void Chain::init(){
   for (int i=0;i<nn;i++){
     v[2*i]=0.;
     v[2*i+1]=0.;
+    force[2*i]=0.;
+    force[2*i+1]=0.;
+    drag[2*i]=0.;
+    drag[2*i+1]=0.;
     //std::cout<<"xhalf "<<xhalf[2*i]<<" "<<xhalf[2*i+1]<<std::endl;
   }
   nForOne=nn/ns;
@@ -241,8 +259,8 @@ void Chain::init(){
 
 void Chain::update(){
   for (int i=0;i<nn;i++){
-    v[2*i] += force[2*i]/zeta;
-    v[2*i+1] += force[2*i+1]/zeta;
+    v[2*i] += drag[2*i]/zeta;
+    v[2*i+1] += drag[2*i+1]/zeta;
 
     x[2*i] = xtmp[2*i]+v[2*i];
     x[2*i+1] =xtmp[2*i+1]+v[2*i+1];
@@ -259,6 +277,7 @@ void Chain::update(){
     if (x[2*i+1]>ly) x[2*i+1] = 2*ly-x[2*i+1];
     if (x[2*i+1]<0) x[2*i+1] = -x[2*i+1];
   }
+  //penetrationRemoval();
   /*
   int tmp;
   for (int i=0;i<ns;i++){
@@ -304,6 +323,7 @@ void Chain::nondimension(const Units& unt){
   rCut /= unt.dx;
   sigma /= unt.dx;
   epsilon *= unt.dt*unt.dt/unt.dm/unt.dx/unt.dx;
+  randForce = sqrt(24*kBT*zeta);
   std::cout<<"rCut,sigma "<<rCut<<" "<<sigma<<std::endl;
   std::cout<<"diffDist"<<diffDist<<std::endl;
   std::cout<<"friction Coef"<<zeta<<std::endl;
@@ -483,6 +503,8 @@ void Chain::computeForce(){
   for (int i=0;i<nn;i++){
     force[2*i]=0.;
     force[2*i+1]=0.;
+    drag[2*i]=0.;
+    drag[2*i+1]=0.;
   }
   if (nb){
     bondHarmonicForce();
@@ -496,7 +518,7 @@ void Chain::computeForce(){
     buildLinkList();
     pairWiseInteraction();
   }
-  randomForce();
+  if (kBT) randomForce();
   //std::cout<<"ks"<<ks<<std::endl;
   //for (int i=0;i<nn;i++)
   //  std::cout<<i<<" force "<<force[2*i]<<" "<<force[2*i+1]<<std::endl; 
@@ -608,12 +630,15 @@ void Chain::moveOutside(double xp, double yp, int idc, int idp){
 
 void Chain::randomForce(){
   double fx, fy, factor;
-  factor = sqrt(24.0*kBT*zeta);//dt=1
+  //factor = sqrt(24.0*kBT*zeta);//dt=1
+  factor = randForce;
   for (int i=0;i<nn;i++){
     fx = factor*(random->uniform()-0.5);
     fy = factor*(random->uniform()-0.5);
-    force[2*i] += fx;
-    force[2*i+1] += fy;
+    drag[2*i] += fx;
+    drag[2*i+1] += fy;
+    //force[2*i] += fx;
+    //force[2*i+1] += fy;
   }
 }
 
@@ -628,7 +653,7 @@ void Chain::randomDisplacement(){
     //yorg = x[2*i+1];
     x[2*i] += dx;
     x[2*i+1] += dy;
-    for (int idc=0;idc<pCell->ns;idc++){
+    /*for (int idc=0;idc<pCell->ns;idc++){
       inside = particleInsideCell(x[2*i],x[2*i+1],idc);
       if (inside){
         //std::cout<<"inside cell "<<idc<<" particle "<<i<<std::endl;
@@ -638,7 +663,7 @@ void Chain::randomDisplacement(){
         //x[2*i+1] = yorg;
         break;
       }
-    }
+    }*/
   }
   /* 
   for (int i=0;i<nn;i++){
@@ -683,6 +708,8 @@ void Chain::initLJ(){
   std::cout<<"cx,cy "<<cx<<" "<<cy<<std::endl;
   lscl=new int[nn];
   head=new int[cx*cy];
+  lscl_c=new int[pCell->nn];
+  head_c=new int[cx*cy];
   //std::cout<<"lscl,head size"<<nn<<" "<<cx*cy<<std::endl;
   rrCut=rCut*rCut;
   sig2=sigma*sigma;
@@ -694,27 +721,43 @@ void Chain::buildLinkList(){
   int idx,idy,idc;
   double dx,dy;
   //std::cout<<"lx,ly,cx,cy "<<lx<<" "<<ly<<" "<<cx<<" "<<cy<<std::endl;
-  dx = double(lx/cx);
-  dy = double(ly/cy);
+  
+  //std::cout<<"cell particle size "<<pCell->nn<<std::endl;
+  dx = double(lx)/double(cx);
+  dy = double(ly)/double(cy);
   //if (dx<1 || dy < 1) std::cout<<"error, the cut off distance is too small"<<std::endl;
   //std::cout<<"lx,ly,cx,cy "<<lx<<" "<<ly<<" "<<cx<<" "<<cy<<std::endl;
-  for (int i=0;i<cellSize;i++)
+  for (int i=0;i<cellSize;i++){
     head[i]=EMPTY;
-  
+    head_c[i]=EMPTY;
+  }
+  //std::cout<<"lx,ly,cx,cy "<<lx<<" "<<ly<<" "<<cx<<" "<<cy<<std::endl;
+  //particles
   for (int i=0;i<nn;i++){
     idx = floor(x[2*i]/dx);
     idy = floor(x[2*i+1]/dy);
     idc = idy*cx + idx;
-    //std::cout<<"dx,dy, i,idc "<<dx<<" "<<dy<<" "<<i<<" "<<idc<<std::endl;
+    //std::cout<<"dx,dy, idx,idy "<<dx<<" "<<dy<<" "<<idx<<" "<<idy<<std::endl;
+    //std::cout<<"idc "<<idc<<" "<<cx*cy<<std::endl;
+    //if (idc >cx*cy) std::cout<<"idc "<<idc<<" "<<cx*cy<<std::endl;
     lscl[i]=head[idc];
     head[idc]=i;
-    if (idc >cx*cy) std::cout<<"idc "<<idc<<" "<<cx*cy<<std::endl;
+  }
+  // cell structure nodes
+  for (int i=0;i<pCell->nn;i++){
+    idx = floor(pCell->x[2*i]/dx);
+    idy = floor(pCell->x[2*i+1]/dy);
+    idc = idy*cx + idx;
+    //std::cout<<"dx,dy, i,idc "<<dx<<" "<<dy<<" "<<i<<" "<<idc<<std::endl;
+    lscl_c[i]=head_c[idc];
+    head_c[idc]=i;
+    if (idc >cx*cy) std::cout<<"cell idc "<<idc<<" "<<cx*cy<<std::endl;
   }
 }
 
 void Chain::pairWiseInteraction(){
   int idc,idc_nb;
-  int i,j;
+  int i,j,jc;
   //double dx,dy,rsq;//r
   //double sig2,sig6,ri2,ri6,fcVal;
 
@@ -752,22 +795,38 @@ void Chain::pairWiseInteraction(){
           }
 
 
-          if (head[idc_nb]==EMPTY) continue;
-          i=head[idc];
-          while(i!=EMPTY){
-            j=head[idc_nb];
-            while(j!=EMPTY){
-              if (i<j) LJForce(i,j);
-              j=lscl[j];
-            }//end of loop j
-            i=lscl[i];
-          }//eof loop i
+          //if (head[idc_nb]==EMPTY) continue;
+          if (head[idc_nb] !=EMPTY){
+            i=head[idc];
+            while(i!=EMPTY){
+              j=head[idc_nb];
+                while(j!=EMPTY){
+                  if (i<j) LJForce(i,j);
+                  j=lscl[j];
+                }//end of loop j
+              i=lscl[i];
+            }
+          }
+          
+          if (head_c[idc_nb] !=EMPTY){
+            i=head[idc];
+            while(i!=EMPTY){
+              jc=head_c[idc_nb];
+                while(jc!=EMPTY){
+                  particleCellLJForce(i,jc);
+                  jc=lscl_c[jc];
+                }//end of loop j
+              i=lscl[i];
+            }
+          }
+
         }//eof nbx
       }//eof nby
     }//eof idcx
   }//eof idcy
   
 }
+
 
 void Chain::LJForce(int i,int j){
   double dx,dy,rsq,ri2,ri6,fcVal;
@@ -802,12 +861,59 @@ void Chain::LJForce(int i,int j){
     ri2=1.0/rsq;ri6=ri2*ri2*ri2;
     //r=sqrt(rsq);
     fcVal=48.0*epsilon*ri2*ri6*sig6*(sig6*ri6-0.5);
-    force[2*i] += fcVal*dx;
+    /*force[2*i] += fcVal*dx;
     force[2*i+1] += fcVal*dy;
     force[2*j] -= fcVal*dx;
-    force[2*j+1] -= fcVal*dy;
+    force[2*j+1] -= fcVal*dy;*/
+    drag[2*i] += fcVal*dx;
+    drag[2*i+1] += fcVal*dy;
+    drag[2*j] -= fcVal*dx;
+    drag[2*j+1] -= fcVal*dy;
   }
 }
+
+void Chain::particleCellLJForce(int i,int j){
+  double dx,dy,rsq,ri2,ri6,fcVal;
+  double halfX, halfY;
+  double d2;
+  d2 = diameter*diameter;
+  halfX = 0.5*lx;
+  halfY = 0.5*ly;
+  dx = x[2*i]-pCell->x[2*j];
+  dy = x[2*i+1]-pCell->x[2*j+1];
+  if (periodicX){
+    if (std::abs(dx)>halfX){
+      if (dx > 0.)   
+        dx -=lx;
+      else
+        dx +=lx;
+    }
+  }
+  if (periodicY){
+    if (std::abs(dy)>halfY){
+      if (dy > 0.)   
+        dy -=ly;
+      else
+        dy +=ly;
+    }
+  }
+  rsq = dx*dx + dy*dy;
+  //std::cout<<"i,j"<<i<<" "<<j<<" "<<rsq<<std::endl;
+  // periodic conditions not considered yet 
+  if (rsq < rrCut){
+    if (rsq < d2) rsq = d2;
+    ri2=1.0/rsq;ri6=ri2*ri2*ri2;
+    //r=sqrt(rsq);
+    fcVal=48.0*epsilon*ri2*ri6*sig6*(sig6*ri6-0.5);
+    //force[2*i] += fcVal*dx;
+    //force[2*i+1] += fcVal*dy;
+    drag[2*i] += fcVal*dx;
+    drag[2*i+1] += fcVal*dy;
+    pCell->force[2*j] -= fcVal*dx;
+    pCell->force[2*j+1] -= fcVal*dy;
+  }
+}
+
 
 void Chain::writeGeometry(const std::string filename){
   using namespace std; 

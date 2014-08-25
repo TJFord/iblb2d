@@ -132,7 +132,6 @@ void IBM::interpret(){
     double s1,s2,r1,r2;
     int i1,i2;
     //double w;
-
     lx = plb->lx;
     ly = plb->ly;
     for(int j=0;j<nn;j++){
@@ -155,12 +154,16 @@ void IBM::interpret(){
           nfID = plb->xy2idx[(i2-1+iy)*lx+i1-1+ix];
           //nfID = plb->xy2idx[(i2-2+iy)*lx+i1-2+ix];
          // nfID = plb->xy2idx[(i2+iy)*lx+i1+ix];
-          if (nfID > plb->nf || nfID < 0) 
+          if (nfID > plb->nf || nfID < 0){ 
             nfID = plb->xy2idx[((i2-1+iy + ly)%ly)*lx+(i1-1+ix + lx)%lx];
+            //if (nfID > plb->nf || nfID < 0) std::cout<<"after nfID "<<nfID<<std::endl;
+          }
             //std::cout<<"nfID "<<nfID<<" nt"<<plb->nt<<std::endl;
           //plb->computeMacros(nfID,&rho, &ux,&uy);
           pCell->v[2*j] += w1[ix]*w2[iy]*plb->v[2*nfID];
           pCell->v[2*j+1] += w1[ix]*w2[iy]*plb->v[2*nfID+1];
+          //pCell->v[2*j] += plb->v[2*nfID];
+          //pCell->v[2*j+1] +=plb->v[2*nfID+1];
         }
       }
     } 

@@ -24,7 +24,8 @@ int main(int argc, char *argv[])
   //string out="rst.txt";
   //string cin="cellInput.txt";
   string cin="MultiCells.txt";
-  string win="MultiWorms.txt";
+  //string win="MultiWorms.txt";
+  string win="particles.txt";
   //string cin="circle.txt";
   //string cin="sphere.txt";
   //string cin="chain.txt";
@@ -72,8 +73,8 @@ int main(int argc, char *argv[])
 
   worm.initLJ();
   
-  int nSave =5000;
-  int nts =250001;//100000;
+  int nSave =100;//50;
+  int nts =5000;//50;//2501;//100000;
   //a.init();
   
   //a.printInfor();// this one should come after init();
@@ -95,6 +96,19 @@ int main(int argc, char *argv[])
   //cellInChanl.output(cellout); 
   
   for (int i=0;i<nts;i++){
+    if (i%nSave ==0 ){
+      channel.writeVelocity(fluidout);
+      channel.writeForce(fluidForce);
+      //rbc.writeGeometry(cellout);
+      //rbc.writeForce(cellForce);
+      //rbc.writeVelocity(cellVelocity);
+      worm.writeGeometry(wormout);
+      worm.writeForce(wormForce);
+      cout<<"time step "<<i<<" finsished"<<endl;
+      //cout<<"area "<<rbc.computeArea()/rbc.A0<<endl;
+      //cellInChanl.writeLog(log,i);
+      wormInChanl.writeLog(log,i);
+    }
     //---compute fluid velocity and interpret velocity---//
     //channel.computeVelocity();
     //cellInChanl.interpret();
@@ -128,19 +142,7 @@ int main(int argc, char *argv[])
     worm.update();
     //worm.thermalFluctuation();
     
-    if (i%nSave ==0 ){
-      channel.writeVelocity(fluidout);
-      channel.writeForce(fluidForce);
-      //rbc.writeGeometry(cellout);
-      //rbc.writeForce(cellForce);
-      //rbc.writeVelocity(cellVelocity);
-      worm.writeGeometry(wormout);
-      worm.writeForce(wormForce);
-      cout<<"time step "<<i<<" finsished"<<endl;
-      //cout<<"area "<<rbc.computeArea()/rbc.A0<<endl;
-      //cellInChanl.writeLog(log,i);
-      wormInChanl.writeLog(log,i);
-    }
+    
   }
   clock_t end = clock();
   double elapsedSecs = double(end-begin)/CLOCKS_PER_SEC;

@@ -32,8 +32,7 @@ int main(int argc, char *argv[])
   //string in="inputForce.txt";
   //string fin="inputChannel.txt";
   //string fin="shear.txt";
-  //string fin="Velchannel.txt";
-  string fin="noFlowChannel.txt";
+  string fin="Velchannel.txt";
   //string fin="channel.txt";
   //string fin="vonkarman.txt";
   string fgeom="fgeom.txt";
@@ -42,9 +41,15 @@ int main(int argc, char *argv[])
   string cellVelocity="cellVelocity.txt";
   string wormout="chainRst.txt";
   string wormForce="chainForce.txt";
+  string wormVelocity="chainVelocity.txt";
   string fluidout="fluidRst.txt";
   string fluidForce="fluidForce.txt";
   string log="Log.txt";
+
+  //reread files
+  string rfv="restartFluidVelocity.txt";
+  string rcp="restartCellPosition.txt";
+  string rpp="restartChainPosition.txt";
 
   LB channel;
   channel.readInput(fin);
@@ -52,13 +57,16 @@ int main(int argc, char *argv[])
   channel.printInfor();
   channel.writeGeometry(fgeom);
   channel.writeLog(log);
- /* 
+  //reread velocity
+  channel.reReadVelocity(rfv);
+
   Cell rbc;
   rbc.readInput(cin);
   rbc.init();
   rbc.nondimension(*channel.pUnits);
   //rbc.output(out);
-  rbc.writeLog(log);*/
+  rbc.writeLog(log);
+  rbc.reReadPosition(rcp);
   
   Chain worm;
   worm.readInput(win);
@@ -66,23 +74,25 @@ int main(int argc, char *argv[])
   worm.nondimension(*channel.pUnits);
   //rbc.output(out);
   worm.writeLog(log);
-  
+  worm.reReadPosition(rpp);
+  worm.setCells(&rbc);
 
-  //IBM cellInChanl(&channel,&rbc);
+  IBM cellInChanl(&channel,&rbc);
   IBM wormInChanl(&channel,&worm);
-
+ 
   worm.initLJ();
-  
-  int nSave =100;//50;
-  int nts =5000;//50;//2501;//100000;
+
+  int nSave =250000;//25000;//500000;//5000;//100000;
+  //int nts =12750001;//25000001;//250001;//5000001;
+  int nts =12500002;//25000001;//250001;//5000001;
+  int nstart =12500001;//6500001; 
   //a.init();
   
   //a.printInfor();// this one should come after init();
   //a.output(out);
   
   //clock_t begin = clock();
-  /*
-  for (int i=0;i<12000;i++){
+  /*for (int i=0;i<12000;i++){
     //channel.collideSwap();
     //channel.streamSwap();
     
@@ -91,39 +101,23 @@ int main(int argc, char *argv[])
     channel.applyBC();
 
   }*/
-     // channel.writeVelocity(fluidout);
-  clock_t begin = clock();
-  //cellInChanl.output(cellout); 
-  
-  for (int i=0;i<nts;i++){
-    if (i%nSave ==0 ){
-      channel.writeVelocity(fluidout);
-      channel.writeForce(fluidForce);
-      //rbc.writeGeometry(cellout);
-      //rbc.writeForce(cellForce);
-      //rbc.writeVelocity(cellVelocity);
-      worm.writeGeometry(wormout);
-      worm.writeForce(wormForce);
-      cout<<"time step "<<i<<" finsished"<<endl;
-      //cout<<"area "<<rbc.computeArea()/rbc.A0<<endl;
-      //cellInChanl.writeLog(log,i);
-      wormInChanl.writeLog(log,i);
-    }
+/*
+  for (int i=0;i<100000;i++){
     //---compute fluid velocity and interpret velocity---//
     //channel.computeVelocity();
-    //cellInChanl.interpret();
+    cellInChanl.interpret();
     wormInChanl.interpret();
     //---update temporary position at half time step---//
-    //rbc.updateHalf();
+    rbc.updateHalf();
     worm.updateHalf();
     //---compute solid force based on temporary position---// 
-    //rbc.computeForce();
+    rbc.computeForce();
     worm.computeForce();
     //rbc.computeReference();
     //rbc.computeRigidForce();
     
     //---spread force to fluid---// 
-    //cellInChanl.spread();
+    cellInChanl.spread();
     wormInChanl.spread();
 
 
@@ -135,18 +129,73 @@ int main(int argc, char *argv[])
     
     //---compute fluid velocity and interpret velocity after force spreading---//
     //channel.computeVelocity();
-    //cellInChanl.interpret();
+    cellInChanl.interpret();
     wormInChanl.interpret();
     //---update position at a full time step---//
-    //rbc.update();
+    rbc.update();
     worm.update();
+    worm.thermalFluctuation();
+  }*/
+  
+     // channel.writeVelocity(fluidout);
+  clock_t begin = clock();
+  //cellInChanl.output(cellout); 
+  
+  for (int i=nstart;i<nts;i++){
+    //---compute fluid velocity and interpret velocity---//
+    cellInChanl.interpret();
+    wormInChanl.interpret();
+    //---update temporary position at half time step---//
+    rbc.updateHalf();
+    worm.updateHalf();
+    //---compute solid force based on temporary position---// 
+    rbc.computeForce();
+    worm.computeForce();
+    //---spread and apply to fluid---// 
+    cellInChanl.spread();
+    channel.applyForce();//spread will overwrite plb->force=0
+
+    wormInChanl.spread();
+    channel.applyForce();
+    //rbc.computeReference();
+    //rbc.computeRigidForce();
+    
+    //---LB fluid solver---// 
+    channel.collide();
+    channel.stream();
+    channel.applyBC();
+    
+    //---compute fluid velocity and interpret velocity after force spreading---//
+    //channel.computeVelocity();
+    cellInChanl.interpret();
+    wormInChanl.interpret();
+    //---update position at a full time step---//
+    worm.update();
+    worm.penetrationRemoval();
     //worm.thermalFluctuation();
+    rbc.update();// rbc update should come after thermalFluctuation due to edgeFlag calculation
     
-    
+    if (i%nSave ==0 ){
+      channel.writeVelocity(fluidout);
+      channel.writeForce(fluidForce);
+      rbc.writeGeometry(cellout);
+      rbc.writeForce(cellForce);
+      rbc.writeVelocity(cellVelocity);
+      worm.writeGeometry(wormout);
+      worm.writeForce(wormForce);
+      worm.writeVelocity(wormVelocity);
+      cout<<"time step "<<i<<" finsished"<<endl;
+      //cout<<"area "<<rbc.computeArea()/rbc.A0<<endl;
+      /*cout<<"edgeFlag ";
+      for(int j=0;j<rbc.ns;j++)
+        cout<<" "<<rbc.edgeFlag[j];
+      cout<<endl;*/
+      cellInChanl.writeLog(log,i);
+    }
   }
   clock_t end = clock();
   double elapsedSecs = double(end-begin)/CLOCKS_PER_SEC;
   cout<<"time elapsed "<<elapsedSecs<<endl;
-
+  cellInChanl.writeLog(log,int(elapsedSecs));
   return 0;
 }

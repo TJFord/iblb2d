@@ -68,20 +68,20 @@ int main(int argc, char *argv[])
   worm.writeLog(log);
   worm.setCells(&rbc);
   
-
   IBM cellInChanl(&channel,&rbc);
   IBM wormInChanl(&channel,&worm);
  
-  //worm.initLJ();
+  worm.initLJ();
 
-  int nSave =25000;//250000;//100000;//5000;
-  int nts =1250001;//12500001;//5000001;//250001;//5000001;//250001;//100000;
+  int nSave =250000;//250000;//100000;//5000;
+  int nts =12500001;//12500001;//5000001;//250001;//5000001;//250001;//100000;
   //a.init();
   
   //a.printInfor();// this one should come after init();
   //a.output(out);
   
   //clock_t begin = clock();
+  
   for (int i=0;i<12000;i++){
     //channel.collideSwap();
     //channel.streamSwap();
@@ -141,13 +141,13 @@ int main(int argc, char *argv[])
     worm.updateHalf();
     //---compute solid force based on temporary position---// 
     rbc.computeForce();
-    //worm.computeForce();
+    worm.computeForce();
     //---spread and apply to fluid---// 
     cellInChanl.spread();
     channel.applyForce();//spread will overwrite plb->force=0
 
-    //wormInChanl.spread();
-    //channel.applyForce();
+    wormInChanl.spread();
+    channel.applyForce();
     //rbc.computeReference();
     //rbc.computeRigidForce();
     
@@ -161,13 +161,13 @@ int main(int argc, char *argv[])
     cellInChanl.interpret();
     wormInChanl.interpret();
     //---update position at a full time step---//
-    rbc.update();
     worm.update();
-    worm.thermalFluctuation();
-    
+    worm.penetrationRemoval();
+    rbc.update();
+
     if (i%nSave ==0 ){
       channel.writeVelocity(fluidout);
-      channel.writeForce(fluidForce);
+      channel.writeForce(fluidForce);//only writes the last spread force
       rbc.writeGeometry(cellout);
       rbc.writeForce(cellForce);
       rbc.writeVelocity(cellVelocity);
@@ -176,10 +176,10 @@ int main(int argc, char *argv[])
       worm.writeVelocity(wormVelocity);
       cout<<"time step "<<i<<" finsished"<<endl;
       //cout<<"area "<<rbc.computeArea()/rbc.A0<<endl;
-      cout<<"edgeFlag ";
+      /*cout<<"edgeFlag ";
       for(int j=0;j<rbc.ns;j++)
         cout<<" "<<rbc.edgeFlag[j];
-      cout<<endl;
+      cout<<endl;*/
       cellInChanl.writeLog(log,i);
     }
   }
