@@ -16,6 +16,7 @@ Chain::Chain(){
   pAngle=NULL;
   random=NULL;
   drag=NULL;
+  pCell=NULL;
 
   lscl=NULL;
   head=NULL;
@@ -52,8 +53,10 @@ Chain& Chain::operator=(const Chain& rhs){
 
     delete [] lscl;
     delete [] head;
-    delete [] lscl_c;
-    delete [] head_c;
+    if (pCell){
+      delete [] lscl_c;
+      delete [] head_c;
+    }
     
     nn=rhs.nn; nb=rhs.nb; na=rhs.na;
     ns=rhs.ns;
@@ -195,8 +198,10 @@ Chain::~Chain(){
   delete random;
   delete [] lscl;
   delete [] head;
-  delete [] lscl_c;
-  delete [] head_c;
+  if (pCell){
+    delete [] lscl_c;
+    delete [] head_c;
+  }
   delete [] drag;
 }
 
@@ -268,14 +273,18 @@ void Chain::update(){
     if (periodicX){
       if (x[2*i] < 0.) x[2*i] += lx;
       if (x[2*i] >= lx) x[2*i] -= lx;
+    }else{
+      if (x[2*i] < 0.) x[2*i] = -x[2*i];
+      if (x[2*i] >= lx) x[2*i] = 2*lx-x[2*i];
     }
     if (periodicY){
       if (x[2*i+1] < 0.) x[2*i+1] += ly;
       if (x[2*i+1] >= ly) x[2*i+1] -= ly;
+    }else{
+      //bounceback at top bottom wall
+      if (x[2*i+1]>ly) x[2*i+1] = 2*ly-x[2*i+1];
+      if (x[2*i+1]<0) x[2*i+1] = -x[2*i+1];
     }
-    //bounceback at top bottom wall
-    if (x[2*i+1]>ly) x[2*i+1] = 2*ly-x[2*i+1];
-    if (x[2*i+1]<0) x[2*i+1] = -x[2*i+1];
   }
   //penetrationRemoval();
   /*
@@ -645,7 +654,7 @@ void Chain::randomForce(){
 void Chain::randomDisplacement(){
   double dx, dy;
   //double xorg,yorg;
-  int inside=0;
+//  int inside=0;
   for (int i=0;i<nn;i++){
     dx = diffDist*random->gaussian();
     dy = diffDist*random->gaussian();
@@ -708,8 +717,10 @@ void Chain::initLJ(){
   std::cout<<"cx,cy "<<cx<<" "<<cy<<std::endl;
   lscl=new int[nn];
   head=new int[cx*cy];
-  lscl_c=new int[pCell->nn];
-  head_c=new int[cx*cy];
+  if (pCell){
+    lscl_c=new int[pCell->nn];
+    head_c=new int[cx*cy];
+  }
   //std::cout<<"lscl,head size"<<nn<<" "<<cx*cy<<std::endl;
   rrCut=rCut*rCut;
   sig2=sigma*sigma;
@@ -729,7 +740,7 @@ void Chain::buildLinkList(){
   //std::cout<<"lx,ly,cx,cy "<<lx<<" "<<ly<<" "<<cx<<" "<<cy<<std::endl;
   for (int i=0;i<cellSize;i++){
     head[i]=EMPTY;
-    head_c[i]=EMPTY;
+    if (pCell) head_c[i]=EMPTY;
   }
   //std::cout<<"lx,ly,cx,cy "<<lx<<" "<<ly<<" "<<cx<<" "<<cy<<std::endl;
   //particles
@@ -744,6 +755,7 @@ void Chain::buildLinkList(){
     head[idc]=i;
   }
   // cell structure nodes
+  if(pCell){
   for (int i=0;i<pCell->nn;i++){
     idx = floor(pCell->x[2*i]/dx);
     idy = floor(pCell->x[2*i+1]/dy);
@@ -752,6 +764,7 @@ void Chain::buildLinkList(){
     lscl_c[i]=head_c[idc];
     head_c[idc]=i;
     if (idc >cx*cy) std::cout<<"cell idc "<<idc<<" "<<cx*cy<<std::endl;
+  }
   }
 }
 
@@ -807,7 +820,7 @@ void Chain::pairWiseInteraction(){
               i=lscl[i];
             }
           }
-          
+          if(pCell){ 
           if (head_c[idc_nb] !=EMPTY){
             i=head[idc];
             while(i!=EMPTY){
@@ -818,6 +831,7 @@ void Chain::pairWiseInteraction(){
                 }//end of loop j
               i=lscl[i];
             }
+          }
           }
 
         }//eof nbx

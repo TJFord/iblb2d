@@ -48,7 +48,9 @@ public:
   double neqPixx, neqPixy, neqPiyy;
 
   //double F[9]; // force term for one lattice
-  
+  int nts;//total time steps
+  int ntsOut;//output timestep
+
   int nbc;//number of boundary conditions
 
   Dynamics *pBC;

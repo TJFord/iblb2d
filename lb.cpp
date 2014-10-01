@@ -37,6 +37,8 @@ LB::LB(){
   pUnits=NULL;
   omega=1.0;
   nbc=0;
+  nts=0;
+  ntsOut=0;
   pBC=NULL;
   collisionFun=NULL;
   nv=0;no=0;nb=0;
@@ -66,6 +68,7 @@ LB& LB::operator=(const LB& rhs){
     nbc=rhs.nbc; nv=rhs.nv; no=rhs.no; nb=rhs.nb;
     collisionScheme = rhs.collisionScheme;
     collisionFun = rhs.collisionFun;
+    nts=rhs.nts; ntsOut=rhs.ntsOut;
    
     int tmp;
     xy2idx = new int[lx*ly];
@@ -214,6 +217,10 @@ void LB::readInput(const std::string filename)
         }else if(str.compare("nt")==0){
           in>>nt;f=new double[nt*q];
           ft=new double[nt*q];
+        }else if (str.compare("nts") == 0){
+          in>>nts;
+        }else if(str.compare("ntsOut")==0){
+          in>>ntsOut;
         }
        // else if (str.compare("nf") == 0)
        // { in >> nf; f = new double[q*(nf+1)];}

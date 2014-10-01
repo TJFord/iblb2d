@@ -11,8 +11,8 @@ IBM::IBM(LB* plb_, Solid* pCell_, int nc_){
   plb = plb_;
   pCell = pCell_;
   nc = nc_;
-  pCell->lx = plb->lx;
-  pCell->ly = plb->ly;
+  pCell->lx = plb->lx - 1;
+  pCell->ly = plb->ly - 1;
   for (int i=0;i<4;i++){
     w1[i]=0.;
     w2[i]=0.;

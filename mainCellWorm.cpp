@@ -73,8 +73,8 @@ int main(int argc, char *argv[])
  
   worm.initLJ();
 
-  int nSave =250000;//250000;//100000;//5000;
-  int nts =12500001;//12500001;//5000001;//250001;//5000001;//250001;//100000;
+  int nSave =channel.ntsOut;//250000;//100000;//5000;
+  int nts =channel.nts;//12500001;//12500001;//5000001;//250001;//5000001;//250001;//100000;
   //a.init();
   
   //a.printInfor();// this one should come after init();
