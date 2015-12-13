@@ -32,6 +32,7 @@ public:
   double *ft;//copy of f
   int *coor;
   double *v;//velocity
+  double g[2];//gravity
   std::string collisionScheme;
 
   Units *pUnits;

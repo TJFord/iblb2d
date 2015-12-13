@@ -104,6 +104,7 @@ public:
 
   double m;
   double g;
+  double acc[2];
 
   //double xc[2];
   double *A0;

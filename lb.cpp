@@ -28,6 +28,10 @@ void swap(double &f1, double &f2){
 
 LB::LB(){
   lx=0;ly=0;nf=0;nt=0;
+  //acceleration
+  g[0]=0.0;
+  g[1]=0.0;
+
   xy2idx=NULL;
   nbList=NULL;
   f=NULL;
@@ -210,6 +214,8 @@ void LB::readInput(const std::string filename)
         {in >> lx;}
         else if (str.compare("ly") == 0)
         { in >> ly;}
+        else if (str.compare("gravity") == 0)
+        { in >> g[0] >>g[1];}
         else if(str.compare("nf")==0){
           in>>nf;
           force = new double[nf*d];
@@ -490,8 +496,9 @@ void LB::computeMacros(int id, double *rho, double * ux, double *uy){
   double mediumLine = f[st] + f[st+1] + f[st+3];
   double lowerLine = f[st+4] + f[st+7] + f[st+8];
   *rho = upperLine + mediumLine + lowerLine;
-  *ux = (f[st+1]+f[st+5]+f[st+8] -(f[st+3] +f[st+6] + f[st + 7]))/(*rho);
-  *uy = (upperLine - lowerLine)/(*rho);
+  *ux = (f[st+1]+f[st+5]+f[st+8] -(f[st+3] +f[st+6] + f[st + 7])
+      + 0.5*(force[2*id] + g[0]))/(*rho);
+  *uy = (upperLine - lowerLine + 0.5*(force[2*id+1] + g[1]))/(*rho);
 }
 
 void LB::computeVelocity(){
@@ -571,8 +578,8 @@ void LB::applyForce(){
   int id;
   for (id=0;id<nf;id++){
     st = id*9;
-    fx = force[id*d];
-    fy = force[id*d+1];
+    fx = force[id*d]+g[0];
+    fy = force[id*d+1]+g[1];
     //computeMacros(id,&rho, &ux, &uy);
     ux=v[2*id];
     uy=v[2*id+1];
