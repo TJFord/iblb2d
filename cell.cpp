@@ -23,6 +23,7 @@ Cell::Cell(){
   kb=0.;
   kp=0.;
   g=9.8;
+  acc[0]=acc[1]=0.0;
 
   periodicX=0;
   periodicY=0;
@@ -114,6 +115,8 @@ void Cell::readInput(const std::string filename){
         in>>lx;
       }else if(str.compare("ly")==0){
         in>>ly;
+      }else if(str.compare("gravity")==0){
+        in>>acc[0]>>acc[1];
       }else if(str.compare("periodic")==0){
         in>>periodicX>>periodicY;
       }else if(str.compare("ns")==0){
@@ -549,8 +552,9 @@ void Cell::areaConservationForce(){
 
 void Cell::computeForce(){
   for (int i=0;i<nn;i++){
-    force[2*i]=0.;
-    force[2*i+1]=0.;
+    force[2*i]=g*acc[0];
+    force[2*i+1]=g*acc[1];
+    //std::cout<<"gravity cell"<<force[2*i]<< " "<<force[2*i+1]<<std::endl;
   }
   for (int i=0;i<ns;i++){
     edgeFlag[i]=0;
